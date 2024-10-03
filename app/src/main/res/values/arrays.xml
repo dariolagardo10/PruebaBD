@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="tipo_documento_array">
+        <item>Seleccione tipo de documento</item>
+        <item>DNI</item>
+        <item>Pasaporte</item>
+        <item>Cédula de Identidad</item>
+    </string-array>
+
+    <string-array name="marca_vehiculo_array">
+        <item>Seleccione una marca</item>
+        <item>Toyota</item>
+        <item>Ford</item>
+        <item>Chevrolet</item>
+        <item>Volkswagen</item>
+        <item>Otra</item>
+    </string-array>
+
+    <string-array name="tipo_vehiculo_array">
+        <item>Seleccione un tipo de vehículo</item>
+        <item>Automóvil</item>
+        <item>Motocicleta</item>
+        <item>Camioneta</item>
+        <item>Camión</item>
+    </string-array>
+
+    <string-array name="infraccion_array">
+        <item>Seleccione una infracción</item>
+        <item>Exceso de velocidad</item>
+        <item>Estacionamiento prohibido</item>
+        <item>Semáforo en rojo</item>
+    </string-array>
+
+    <string-array name="expedido_por_array">
+        <item>Seleccione un expedidor</item>
+        <item>Agente 1</item>
+        <item>Agente 2</item>
+        <item>Agente 3</item>
+    </string-array>
+    <string-array name="tipos_equipo">
+        <item>Seleccione un tipo</item>
+        <item>Cinemómetro</item>
+        <item>Alcoholímetro</item>
+        <!-- Añade más tipos de equipo según sea necesario -->
+    </string-array>
+</resources>
