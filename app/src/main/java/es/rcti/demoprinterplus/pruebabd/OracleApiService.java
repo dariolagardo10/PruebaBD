@@ -1,11 +1,16 @@
 package es.rcti.demoprinterplus.pruebabd;
 
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;
+import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.Part;
 
 public interface OracleApiService {
+
     @FormUrlEncoded
     @POST("/oracle_api.php")
     Call<RespuestaLogin> verificarUsuario(
@@ -74,10 +79,28 @@ public interface OracleApiService {
             @Field("codigo_aprobacion") String codigoAprobacion,
             @Field("valor_medido") String valorMedido
     );
+
     @FormUrlEncoded
     @POST("Conductor_Api.php")
     Call<RespuestaVerificarActa> verificarActa(
             @Field("accion") String accion,
             @Field("dt_acta_id") String dtActaId
     );
+
+    @FormUrlEncoded
+    @POST("Conductor_Api.php")
+    Call<RespuestaTiposVehiculo> obtenerTiposVehiculo(@Field("accion") String accion);
+
+    @FormUrlEncoded
+    @POST("Conductor_Api.php")
+    Call<RespuestaInfoLocalidad> buscarInfoLocalidad(@Field("accion") String accion, @Field("localidad") String localidad);
+
+    @FormUrlEncoded
+    @POST("Conductor_Api.php")
+    Call<RespuestaSubirImagen> subirImagen(
+            @Field("accion") String accion,
+            @Field("actaId") String actaId,
+            @Field("imagen") String imagenBase64
+    );
+
 }

@@ -2,7 +2,8 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:background="#FFFFFF">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,33 +16,36 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="24dp">
             <ProgressBar
                 android:id="@+id/progressBar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:visibility="gone"
-                android:layout_gravity="center"/>
+                android:layout_gravity="center"
+                android:indeterminateTint="#006B3F"/>
             <ImageView
                 android:id="@+id/ivHeaderImage"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
+                android:layout_height="100dp"
+                android:layout_marginBottom="16dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/logos8"/>
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="SERIE A - 2024"
-                android:textSize="20sp"
+                android:textSize="24sp"
                 android:textStyle="bold"
+                android:textColor="#006B3F"
                 android:gravity="center"
                 android:layout_marginBottom="8dp"/>
             <TextView
                 android:id="@+id/tvNumero"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="18sp"
+                android:textSize="20sp"
+                android:textColor="#006B3F"
                 android:gravity="center"
                 android:layout_marginBottom="16dp"/>
         </LinearLayout>
@@ -52,11 +56,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Conductor"
-            android:textSize="20sp"
+            android:textSize="22sp"
             android:textStyle="bold"
+            android:textColor="#006B3F"
             android:layout_marginBottom="16dp"
             android:clickable="true"
             android:padding="16dp"
+            android:background="@drawable/section_background"
             android:focusable="true"/>
 
         <LinearLayout
@@ -73,6 +79,8 @@
                 android:hint="Apellido y Nombre"
                 android:inputType="textPersonName"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <Spinner
@@ -80,6 +88,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
+                android:background="@drawable/spinner_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -89,6 +98,8 @@
                 android:hint="Número de Documento"
                 android:inputType="number"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -98,16 +109,32 @@
                 android:hint="Domicilio"
                 android:inputType="textPostalAddress"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
-            <AutoCompleteTextView
-                android:id="@+id/actvLocalidad"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Localidad"
-                android:completionThreshold="1"
-                android:minHeight="48dp"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="horizontal">
+
+                <AutoCompleteTextView
+                    android:id="@+id/actvLocalidad"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:hint="Localidad"
+                    android:padding="8dp"
+                    android:minHeight="48dp"
+                    />
+
+                <Button
+                    android:id="@+id/btnBuscarLocalidad"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Buscar" />
+            </LinearLayout>
+
 
             <EditText
                 android:id="@+id/etCodPostal"
@@ -116,6 +143,8 @@
                 android:hint="Código Postal"
                 android:inputType="number"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <AutoCompleteTextView
@@ -125,6 +154,8 @@
                 android:hint="Departamento"
                 android:completionThreshold="1"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -134,6 +165,8 @@
                 android:hint="Provincia"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -143,6 +176,8 @@
                 android:hint="País"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -152,6 +187,8 @@
                 android:hint="Número de Licencia"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <Spinner
@@ -159,7 +196,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
+                android:background="@drawable/spinner_background"
                 android:layout_marginBottom="16dp"/>
+
 
             <EditText
                 android:id="@+id/etClase"
@@ -168,6 +207,8 @@
                 android:hint="Clase de Licencia"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -177,6 +218,8 @@
                 android:hint="Fecha de Vencimiento"
                 android:inputType="date"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
         </LinearLayout>
@@ -187,11 +230,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Vehículo"
-            android:textSize="20sp"
+            android:textSize="22sp"
             android:textStyle="bold"
+            android:textColor="#006B3F"
             android:layout_marginBottom="16dp"
             android:clickable="true"
             android:padding="16dp"
+            android:background="@drawable/section_background"
             android:focusable="true"/>
 
         <LinearLayout
@@ -208,6 +253,8 @@
                 android:hint="Dominio"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -217,6 +264,8 @@
                 android:hint="Propietario"
                 android:inputType="textPersonName"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <Spinner
@@ -224,6 +273,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
+                android:background="@drawable/spinner_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -233,6 +283,8 @@
                 android:hint="Otra marca"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -242,6 +294,8 @@
                 android:hint="Modelo"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <Spinner
@@ -249,6 +303,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
+                android:background="@drawable/spinner_background"
                 android:layout_marginBottom="16dp"/>
 
         </LinearLayout>
@@ -259,11 +314,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Hecho"
-            android:textSize="20sp"
+            android:textSize="22sp"
             android:textStyle="bold"
+            android:textColor="#006B3F"
             android:layout_marginBottom="16dp"
             android:clickable="true"
             android:padding="16dp"
+            android:background="@drawable/section_background"
             android:focusable="true"/>
 
         <LinearLayout
@@ -278,6 +335,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
+                android:background="@drawable/spinner_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -287,6 +345,8 @@
                 android:hint="Lugar de la infracción"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -296,6 +356,8 @@
                 android:hint="Departamento de la Multa"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -305,6 +367,8 @@
                 android:hint="Municipio de la Multa"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -314,6 +378,8 @@
                 android:hint="Información adicional de la multa"
                 android:inputType="textMultiLine"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
         </LinearLayout>
 
@@ -323,11 +389,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Especificaciones del Equipo de Medición"
-            android:textSize="20sp"
+            android:textSize="22sp"
             android:textStyle="bold"
+            android:textColor="#006B3F"
             android:layout_marginBottom="16dp"
             android:clickable="true"
             android:padding="16dp"
+            android:background="@drawable/section_background"
             android:focusable="true"/>
 
         <LinearLayout
@@ -342,6 +410,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
+                android:background="@drawable/spinner_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -351,6 +420,8 @@
                 android:hint="Equipo"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -360,6 +431,8 @@
                 android:hint="Marca"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -369,6 +442,8 @@
                 android:hint="Modelo"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -378,6 +453,8 @@
                 android:hint="N° de Serie"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -387,6 +464,8 @@
                 android:hint="Código de Aprobación"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
             <EditText
@@ -396,6 +475,8 @@
                 android:hint="Valor Medido"
                 android:inputType="text"
                 android:minHeight="48dp"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
         </LinearLayout>
@@ -406,15 +487,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Tomar Foto"
-            android:minHeight="48dp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
             android:layout_marginBottom="16dp"/>
+
         <Button
             android:id="@+id/btnConectarImprimir"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Imprimir"
-            android:minHeight="48dp"
-            android:padding="16dp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
             android:layout_marginBottom="16dp"/>
 
         <TextView
@@ -422,7 +507,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Estado: Desconectado"
-            android:textSize="16sp"
+            android:textSize="18sp"
+            android:textColor="#006B3F"
             android:layout_marginBottom="16dp"/>
 
         <ImageView
@@ -437,25 +523,37 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Confirmar Foto"
-            android:visibility="gone"/>
+            android:textColor="#FFFFFF"
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp"/>
+
         <Button
             android:id="@+id/btnInsertarConductor"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Insertar Datos del Conductor"
-            android:minHeight="48dp"
-            android:padding="16dp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
             android:layout_marginBottom="16dp"/>
+
         <Button
             android:id="@+id/btnRetakePhoto"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Tomar otra Foto"
-            android:visibility="gone"/>
+            android:textColor="#FFFFFF"
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp"/>
 
         <!-- Espacio adicional para permitir desplazamiento más fluido -->
         <View
             android:layout_width="match_parent"
             android:layout_height="200dp"/>
     </LinearLayout>
+
 </ScrollView>

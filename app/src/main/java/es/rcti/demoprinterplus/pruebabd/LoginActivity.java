@@ -13,10 +13,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-
 public class LoginActivity extends AppCompatActivity {
     private EditText editTextUsername, editTextPassword;
-    private EditText editTextNewNombre, editTextNewApellido, editTextNewLegajo;
+    private EditText editTextNewUsername, editTextNewPassword, editTextNewNombre, editTextNewApellido, editTextNewLegajo;
     private TextView textViewResult;
     private ProgressBar progressBar;
     private Button buttonLogin, buttonRegister, buttonShowRegister;
@@ -34,6 +33,8 @@ public class LoginActivity extends AppCompatActivity {
     private void initializeUIComponents() {
         editTextUsername = findViewById(R.id.editTextUsername);
         editTextPassword = findViewById(R.id.editTextPassword);
+        editTextNewUsername = findViewById(R.id.editTextNewUsername);
+        editTextNewPassword = findViewById(R.id.editTextNewPassword);
         editTextNewNombre = findViewById(R.id.editTextNewNombre);
         editTextNewApellido = findViewById(R.id.editTextNewApellido);
         editTextNewLegajo = findViewById(R.id.editTextNewLegajo);
@@ -100,8 +101,8 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void registrarUsuario() {
-        String username = editTextUsername.getText().toString();
-        String password = editTextPassword.getText().toString();
+        String username = editTextNewUsername.getText().toString();
+        String password = editTextNewPassword.getText().toString();
         String nombre = editTextNewNombre.getText().toString();
         String apellido = editTextNewApellido.getText().toString();
         String legajo = editTextNewLegajo.getText().toString();
@@ -150,6 +151,8 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void limpiarCamposRegistro() {
+        editTextNewUsername.setText("");
+        editTextNewPassword.setText("");
         editTextNewNombre.setText("");
         editTextNewApellido.setText("");
         editTextNewLegajo.setText("");

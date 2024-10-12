@@ -3,22 +3,34 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
+    android:background="#FFFFFF"
     android:id="@+id/scrollView">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="24dp">
+
+        <!--
+ <ImageView
+     android:layout_width="120dp"
+     android:layout_height="120dp"
+     android:src="@drawable/posadas_logo"
+     android:layout_gravity="center"
+     android:layout_marginBottom="24dp"
+     android:contentDescription="Logo de Posadas" />
+ -->
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Iniciar sesión / Registrarse"
-            android:textSize="20sp"
+            android:textSize="24sp"
             android:textStyle="bold"
+            android:textColor="#006B3F"
             android:gravity="center"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginBottom="32dp"/>
 
         <EditText
             android:id="@+id/editTextUsername"
@@ -28,6 +40,7 @@
             android:inputType="text"
             android:minHeight="48dp"
             android:padding="16dp"
+            android:background="@drawable/edit_text_background"
             android:layout_marginBottom="16dp" />
 
         <EditText
@@ -38,23 +51,28 @@
             android:inputType="textPassword"
             android:minHeight="48dp"
             android:padding="16dp"
-            android:layout_marginBottom="16dp" />
+            android:background="@drawable/edit_text_background"
+            android:layout_marginBottom="24dp" />
 
         <Button
             android:id="@+id/buttonLogin"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Iniciar sesión"
-            android:minHeight="48dp"
-            android:layout_marginBottom="24dp" />
+            android:textColor="#FFFFFF"
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
+            android:layout_marginBottom="16dp" />
 
         <Button
             android:id="@+id/buttonShowRegister"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Registrarse"
-            android:minHeight="48dp"
-            android:layout_marginBottom="16dp" />
+            android:textColor="#006B3F"
+            android:background="@drawable/button_outline_background"
+            android:minHeight="56dp"
+            android:layout_marginBottom="24dp" />
 
         <LinearLayout
             android:id="@+id/layoutRegister"
@@ -64,6 +82,28 @@
             android:visibility="gone">
 
             <EditText
+                android:id="@+id/editTextNewUsername"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Nuevo Nombre de Usuario"
+                android:inputType="text"
+                android:minHeight="48dp"
+                android:padding="16dp"
+                android:background="@drawable/edit_text_background"
+                android:layout_marginBottom="16dp" />
+
+            <EditText
+                android:id="@+id/editTextNewPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Nueva Contraseña"
+                android:inputType="textPassword"
+                android:minHeight="48dp"
+                android:padding="16dp"
+                android:background="@drawable/edit_text_background"
+                android:layout_marginBottom="16dp" />
+
+            <EditText
                 android:id="@+id/editTextNewNombre"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -71,6 +111,7 @@
                 android:inputType="text"
                 android:minHeight="48dp"
                 android:padding="16dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp" />
 
             <EditText
@@ -81,6 +122,7 @@
                 android:inputType="text"
                 android:minHeight="48dp"
                 android:padding="16dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp" />
 
             <EditText
@@ -91,14 +133,17 @@
                 android:inputType="text"
                 android:minHeight="48dp"
                 android:padding="16dp"
-                android:layout_marginBottom="16dp" />
+                android:background="@drawable/edit_text_background"
+                android:layout_marginBottom="24dp" />
 
             <Button
                 android:id="@+id/buttonRegister"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Completar Registro"
-                android:minHeight="48dp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/button_background"
+                android:minHeight="56dp"
                 android:layout_marginBottom="16dp" />
 
         </LinearLayout>
@@ -108,7 +153,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:visibility="gone"/>
+            android:visibility="gone"
+            android:indeterminateTint="#006B3F"/>
 
         <TextView
             android:id="@+id/textViewResult"
@@ -116,7 +162,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:textSize="16sp"
-            android:textColor="@android:color/black" />
+            android:textColor="#006B3F"
+            android:gravity="center" />
 
     </LinearLayout>
 </ScrollView>
