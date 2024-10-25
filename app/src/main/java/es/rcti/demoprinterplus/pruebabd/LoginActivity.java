@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
 public class LoginActivity extends AppCompatActivity {
     private EditText editTextUsername, editTextPassword;
     private EditText editTextNewUsername, editTextNewPassword, editTextNewNombre, editTextNewApellido, editTextNewLegajo;
@@ -20,6 +21,7 @@ public class LoginActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private Button buttonLogin, buttonRegister, buttonShowRegister;
     private View layoutRegister;
+    private OracleApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,6 +30,7 @@ public class LoginActivity extends AppCompatActivity {
 
         initializeUIComponents();
         setupListeners();
+        apiService = ApiClient.getClient().create(OracleApiService.class);
     }
 
     private void initializeUIComponents() {
@@ -74,7 +77,6 @@ public class LoginActivity extends AppCompatActivity {
 
         mostrarProgreso(true);
 
-        OracleApiService apiService = ApiClient.getClient().create(OracleApiService.class);
         apiService.verificarUsuario("verificar", username, password).enqueue(new Callback<RespuestaLogin>() {
             @Override
             public void onResponse(Call<RespuestaLogin> call, Response<RespuestaLogin> response) {
@@ -82,12 +84,24 @@ public class LoginActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     RespuestaLogin resultado = response.body();
                     if ("Usuario y contraseña correctos".equals(resultado.getMessage())) {
-                        onLoginSuccess(username);
+                        Log.d("LoginActivity", "Login exitoso. Nombre: " + resultado.getNombre() +
+                                ", Apellido: " + resultado.getApellido() +
+                                ", Legajo: " + resultado.getLegajo());
+
+                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                        intent.putExtra("USERNAME", username);
+                        intent.putExtra("NOMBRE_INSPECTOR", resultado.getNombre());
+                        intent.putExtra("APELLIDO_INSPECTOR", resultado.getApellido());
+                        intent.putExtra("LEGAJO_INSPECTOR", resultado.getLegajo());
+                        startActivity(intent);
+                        finish();
                     } else {
                         mostrarMensaje("Usuario o contraseña incorrectos");
                     }
                 } else {
                     mostrarMensaje("Error en la respuesta del servidor");
+                    Log.e("LoginActivity", "Error en respuesta: " +
+                            (response.errorBody() != null ? response.errorBody().toString() : "Sin detalle"));
                 }
             }
 
@@ -95,7 +109,7 @@ public class LoginActivity extends AppCompatActivity {
             public void onFailure(Call<RespuestaLogin> call, Throwable t) {
                 mostrarProgreso(false);
                 mostrarMensaje("Error en la conexión: " + t.getMessage());
-                Log.e("API Error", t.getMessage());
+                Log.e("LoginActivity", "Error de conexión", t);
             }
         });
     }
@@ -107,42 +121,37 @@ public class LoginActivity extends AppCompatActivity {
         String apellido = editTextNewApellido.getText().toString();
         String legajo = editTextNewLegajo.getText().toString();
 
-        if (username.isEmpty() || password.isEmpty() || nombre.isEmpty() || apellido.isEmpty() || legajo.isEmpty()) {
+        if (username.isEmpty() || password.isEmpty() || nombre.isEmpty() ||
+                apellido.isEmpty() || legajo.isEmpty()) {
             mostrarMensaje("Todos los campos son obligatorios.");
             return;
         }
 
         mostrarProgreso(true);
 
-        OracleApiService apiService = ApiClient.getClient().create(OracleApiService.class);
-        apiService.registrarUsuario("registrar", username, password, nombre, apellido, legajo).enqueue(new Callback<RespuestaLogin>() {
-            @Override
-            public void onResponse(Call<RespuestaLogin> call, Response<RespuestaLogin> response) {
-                mostrarProgreso(false);
-                if (response.isSuccessful() && response.body() != null) {
-                    mostrarMensaje("Usuario registrado correctamente");
-                    limpiarCamposRegistro();
-                    toggleRegisterFields(); // Ocultar campos de registro después de un registro exitoso
-                } else {
-                    mostrarMensaje("Error en el registro.");
-                }
-            }
+        apiService.registrarUsuario("registrar", username, password, nombre, apellido, legajo)
+                .enqueue(new Callback<RespuestaLogin>() {
+                    @Override
+                    public void onResponse(Call<RespuestaLogin> call, Response<RespuestaLogin> response) {
+                        mostrarProgreso(false);
+                        if (response.isSuccessful() && response.body() != null) {
+                            mostrarMensaje("Usuario registrado correctamente");
+                            limpiarCamposRegistro();
+                            toggleRegisterFields();
+                        } else {
+                            mostrarMensaje("Error en el registro.");
+                            Log.e("LoginActivity", "Error en registro: " +
+                                    (response.errorBody() != null ? response.errorBody().toString() : "Sin detalle"));
+                        }
+                    }
 
-            @Override
-            public void onFailure(Call<RespuestaLogin> call, Throwable t) {
-                mostrarProgreso(false);
-                mostrarMensaje("Error en la conexión: " + t.getMessage());
-                Log.e("API Error", t.getMessage());
-            }
-        });
-    }
-
-    private void onLoginSuccess(String username) {
-        Toast.makeText(LoginActivity.this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show();
-        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-        intent.putExtra("USERNAME", username);
-        startActivity(intent);
-        finish();
+                    @Override
+                    public void onFailure(Call<RespuestaLogin> call, Throwable t) {
+                        mostrarProgreso(false);
+                        mostrarMensaje("Error en la conexión: " + t.getMessage());
+                        Log.e("LoginActivity", "Error en registro", t);
+                    }
+                });
     }
 
     private void mostrarMensaje(String mensaje) {

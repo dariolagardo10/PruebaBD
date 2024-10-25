@@ -1,5 +1,7 @@
 package es.rcti.demoprinterplus.pruebabd;
 
+import java.util.List;
+
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import retrofit2.Call;
@@ -39,7 +41,7 @@ public interface OracleApiService {
             @Field("hora") String hora,
             @Field("dominio") String dominio,
             @Field("lugar") String lugar,
-            @Field("infraccion") String infraccion,
+            @Field("infracciones") String infracciones, // Cambiado a infracciones
             @Field("infractor_dni") String infractorDni,
             @Field("infractor_nombre") String infractorNombre,
             @Field("infractor_domicilio") String infractorDomicilio,
@@ -47,7 +49,8 @@ public interface OracleApiService {
             @Field("infractor_cp") String infractorCp,
             @Field("infractor_provincia") String infractorProvincia,
             @Field("infractor_pais") String infractorPais,
-            @Field("infractor_licencia") String infractorLicencia
+            @Field("infractor_licencia") String infractorLicencia,
+            @Field("tipo_vehiculo") String tipoVehiculo
     );
 
     @FormUrlEncoded
@@ -87,9 +90,6 @@ public interface OracleApiService {
             @Field("dt_acta_id") String dtActaId
     );
 
-    @FormUrlEncoded
-    @POST("Conductor_Api.php")
-    Call<RespuestaTiposVehiculo> obtenerTiposVehiculo(@Field("accion") String accion);
 
     @FormUrlEncoded
     @POST("Conductor_Api.php")
@@ -100,7 +100,17 @@ public interface OracleApiService {
     Call<RespuestaSubirImagen> subirImagen(
             @Field("accion") String accion,
             @Field("actaId") String actaId,
-            @Field("imagen") String imagenBase64
+            @Field("imagenes[]") List<String> imagenesBase64
     );
+    @FormUrlEncoded
+    @POST("Conductor_Api.php")
+    Call<RespuestaTiposVehiculo> obtenerTiposVehiculo(@Field("accion") String accion);
 
+    @FormUrlEncoded
+    @POST("Conductor_Api.php")
+    Call<RespuestaMarcas> obtenerMarcas(@Field("accion") String accion);
+
+    @FormUrlEncoded
+    @POST("Conductor_Api.php")
+    Call<RespuestaInfracciones> obtenerInfracciones(@Field("accion") String accion);
 }

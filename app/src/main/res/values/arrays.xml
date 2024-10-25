@@ -7,16 +7,6 @@
         <item>Cédula de Identidad</item>
     </string-array>
 
-    <string-array name="marca_vehiculo_array">
-        <item>Seleccione una marca</item>
-        <item>Toyota</item>
-        <item>Ford</item>
-        <item>Chevrolet</item>
-        <item>Volkswagen</item>
-        <item>Otra</item>
-    </string-array>
-
-
     <string-array name="infraccion_array">
         <item>Seleccione una infracción</item>
         <item>Exceso de velocidad</item>

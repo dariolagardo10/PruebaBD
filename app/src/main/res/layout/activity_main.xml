@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
@@ -338,6 +345,27 @@
                 android:background="@drawable/spinner_background"
                 android:layout_marginBottom="16dp"/>
 
+            <LinearLayout
+                android:id="@+id/layoutInfraccionesSeleccionadas"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Infracciones seleccionadas:"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupInfracciones"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+            </LinearLayout>
+
             <EditText
                 android:id="@+id/etLugar"
                 android:layout_width="match_parent"
@@ -511,18 +539,50 @@
             android:textColor="#006B3F"
             android:layout_marginBottom="16dp"/>
 
-        <ImageView
-            android:id="@+id/ivPhotoPreview"
-            android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:layout_marginBottom="16dp"
-            android:visibility="gone"/>
-
-        <Button
-            android:id="@+id/btnConfirmPhoto"
+        <LinearLayout
+            android:id="@+id/photoPreviewContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Confirmar Foto"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <ImageView
+                android:id="@+id/ivPhotoPreview1"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_weight="1"
+                android:scaleType="centerCrop"
+                android:visibility="gone"/>
+
+            <ImageView
+                android:id="@+id/ivPhotoPreview2"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_weight="1"
+                android:scaleType="centerCrop"
+                android:visibility="gone"/>
+
+            <ImageView
+                android:id="@+id/ivPhotoPreview3"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_weight="1"
+                android:scaleType="centerCrop"
+                android:visibility="gone"/>
+
+            <ImageView
+                android:id="@+id/ivPhotoPreview4"
+                android:layout_width="0dp"
+                android:layout_height="100dp"
+                android:layout_weight="1"
+                android:scaleType="centerCrop"
+                android:visibility="gone"/>
+        </LinearLayout>
+        <Button
+            android:id="@+id/btnConfirmPhotos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Confirmar Fotos"
             android:textColor="#FFFFFF"
             android:background="@drawable/button_background"
             android:minHeight="56dp"
@@ -540,20 +600,68 @@
             android:layout_marginBottom="16dp"/>
 
         <Button
-            android:id="@+id/btnRetakePhoto"
+            android:id="@+id/btnAddMorePhotos"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Tomar otra Foto"
+            android:text="Agregar Más Fotos"
             android:textColor="#FFFFFF"
             android:background="@drawable/button_background"
             android:minHeight="56dp"
             android:visibility="gone"
             android:layout_marginBottom="16dp"/>
 
-        <!-- Espacio adicional para permitir desplazamiento más fluido -->
+        <Button
+            android:id="@+id/btnClearPhotos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Borrar Fotos"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp"/>
+
         <View
             android:layout_width="match_parent"
             android:layout_height="200dp"/>
     </LinearLayout>
 
 </ScrollView>
+    <!-- Nuevo loading overlay -->
+    <RelativeLayout
+        android:id="@+id/loadingOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:background="@drawable/loading_background">
+
+            <ProgressBar
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:indeterminateTint="#006B3F"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Guardando datos..."
+                android:textColor="#006B3F"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+        </LinearLayout>
+
+    </RelativeLayout>
+
+</FrameLayout>

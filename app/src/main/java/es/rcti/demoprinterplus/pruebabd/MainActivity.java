@@ -18,6 +18,7 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Base64;
 import android.util.Log;
@@ -30,6 +31,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -41,7 +43,11 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.gson.Gson;
+
+import org.json.JSONArray;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -50,12 +56,16 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -70,13 +80,23 @@ public class MainActivity extends AppCompatActivity {
 
 
     // Declaración de vistas
+    private static final int REQUEST_GALLERY_PERMISSION = 201;
+    private LinearLayout photoPreviewContainer;
+    private ImageView[] photoPreviewViews = new ImageView[4];
+    private List<String> imagenBase64List = new ArrayList<>();
+    private int currentPhotoIndex = 0;
+
+    private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final int REQUEST_IMAGE_PICK = 2;
+    private String[] currentPhotoPaths = new String[4];
+
     private String imagenBase64Temporal;
 
     private String actaIdActual;
-    private static final int REQUEST_IMAGE_CAPTURE = 1;
+
     private String currentPhotoPath;
 
-    private static final int REQUEST_IMAGE_PICK = 2;
+
     private EditText etClase;
     private EditText etVencimiento;
     private LocationManager locationManager;
@@ -96,7 +116,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvEstado, tvConductor, tvVehiculo, tvHecho, tvNumero, tvEspecificaciones;
     private LinearLayout layoutConductor, layoutVehiculo, layoutHecho, layoutEspecificaciones;
     private ImageView ivPhotoPreview;
-
+    private ChipGroup chipGroupInfracciones;
+    private List<String> infraccionesSeleccionadas = new ArrayList<>();
     private EditText
             etEquipo, etMarcaCinemometro, etModeloCinemometro, etSerieCinemometro,
             etCodAprobacionCinemometro, etValorCinemometro;
@@ -113,26 +134,69 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private BluetoothSocket bluetoothSocket;
     private BluetoothDevice bluetoothDevice;
-
+    private RelativeLayout loadingOverlay;
     private OracleApiService apiService;
+    private String nombreInspector;
+    private String apellidoInspector;
+    private String legajoInspector;
 
     private Button btnBuscarLocalidad;
+    private Map<String, String> infraccionIdMap = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
+
         progressBar = findViewById(R.id.progressBar);
         super.onCreate(savedInstanceState);
+        obtenerDatosInspector();
+        // Obtener datos del inspector
+        Intent intent = getIntent();
+     //   if (intent != null) {
+         //   nombreInspector = intent.getStringExtra("NOMBRE_INSPECTOR");
+         //   apellidoInspector = intent.getStringExtra("APELLIDO_INSPECTOR");
+         //   legajoInspector = intent.getStringExtra("LEGAJO_INSPECTOR");
+
+         //   Log.d("MainActivity", "Datos del inspector recibidos - Nombre: " + nombreInspector +
+           //         ", Apellido: " + apellidoInspector +
+           //         ", Legajo: " + legajoInspector);
+       // }
+
+
         Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
             Log.e("UNCAUGHT", "Excepción no capturada: " + e.getMessage(), e);
             // Aquí puedes implementar lógica adicional, como enviar el error a un servicio de reporte de errores
         });
         setContentView(R.layout.activity_main);
-
+        apiService = ApiClient.getClient().create(OracleApiService.class);
         initializeViews();
         setupSpinners();
         setupListeners();
+// Inicialización para múltiples fotos
+        photoPreviewContainer = findViewById(R.id.photoPreviewContainer);
+        for (int i = 0; i < 4; i++) {
+            photoPreviewViews[i] = findViewById(getResources().getIdentifier("ivPhotoPreview" + (i+1), "id", getPackageName()));
+        }
 
+        btnTomarFoto = findViewById(R.id.btnTomarFoto);
+        btnTomarFoto.setOnClickListener(v -> mostrarOpcionesFoto());
+        chipGroupInfracciones = findViewById(R.id.chipGroupInfracciones);
+        spinnerInfraccion.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String infraccionSeleccionada = parent.getItemAtPosition(position).toString();
+                if (position != 0 && !infraccionSeleccionada.equals("Cargando infracciones...")) {
+                    agregarInfraccion(infraccionSeleccionada);
+                    Log.d("DEBUG", "Infracción seleccionada: " + infraccionSeleccionada);
+                    Log.d("DEBUG", "Infracciones actuales: " + infraccionesSeleccionadas);
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+        loadingOverlay = findViewById(R.id.loadingOverlay);
         btnTomarFoto = findViewById(R.id.btnTomarFoto);
         btnTomarFoto.setOnClickListener(v -> mostrarOpcionesFoto());
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -140,7 +204,7 @@ public class MainActivity extends AppCompatActivity {
         apiService = ApiClient.getClient().create(OracleApiService.class);
         spinnerTipoVehiculo = findViewById(R.id.spinnerTipoVehiculo);
         actvLocalidad = findViewById(R.id.actvLocalidad);
-        ivPhotoPreview = findViewById(R.id.ivPhotoPreview);
+
         etCodPostal = findViewById(R.id.etCodPostal);
         actvDepartamento = findViewById(R.id.actvDepartamento);
         etProvincia = findViewById(R.id.etProvincia);
@@ -166,24 +230,89 @@ public class MainActivity extends AppCompatActivity {
         // Llamar al método para cargar los tipos de vehículo
         cargarTiposVehiculo();
         setPosadasAsDefault();
+
     }
-    private boolean checkAndRequestPermissions() {
-        int camera = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA);
-        int storage = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        List<String> listPermissionsNeeded = new ArrayList<>();
+    // Método para mostrar/ocultar loading
+    private void showLoading(boolean show) {
+        runOnUiThread(() -> {
+            if (loadingOverlay != null) {
+                loadingOverlay.setVisibility(show ? View.VISIBLE : View.GONE);
+            }
+        });
+    }
+    private void obtenerDatosInspector() {
+        Intent intent = getIntent();
+        if (intent != null && intent.getExtras() != null) {
+            nombreInspector = intent.getStringExtra("NOMBRE_INSPECTOR");
+            apellidoInspector = intent.getStringExtra("APELLIDO_INSPECTOR");
+            legajoInspector = intent.getStringExtra("LEGAJO_INSPECTOR");
 
-        if (camera != PackageManager.PERMISSION_GRANTED) {
-            listPermissionsNeeded.add(Manifest.permission.CAMERA);
+            Log.d("MainActivity", "Datos del inspector recibidos - Nombre: " + nombreInspector +
+                    ", Apellido: " + apellidoInspector +
+                    ", Legajo: " + legajoInspector);
+        } else {
+            Log.w("MainActivity", "No se recibieron datos del inspector");
+            // Puedes establecer valores por defecto o mostrar un mensaje
+            nombreInspector = "";
+            apellidoInspector = "";
+            legajoInspector = "";
         }
-        if (storage != PackageManager.PERMISSION_GRANTED) {
-            listPermissionsNeeded.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+    }
+    private void agregarInfraccion(String infraccionDescripcion) {
+        if (!infraccionesSeleccionadas.contains(infraccionDescripcion)) {
+            String infraccionId = infraccionIdMap.get(infraccionDescripcion);
+            if (infraccionId != null) {
+                infraccionesSeleccionadas.add(infraccionDescripcion);
+                Log.d("DEBUG", "Infracción agregada: " + infraccionDescripcion + " con ID: " + infraccionId);
+
+                Chip chip = new Chip(this);
+                chip.setText(infraccionDescripcion);
+                chip.setCloseIconVisible(true);
+                chip.setTag(infraccionId); // Guardamos el ID en el tag del Chip
+                chip.setOnCloseIconClickListener(v -> {
+                    chipGroupInfracciones.removeView(chip);
+                    infraccionesSeleccionadas.remove(infraccionDescripcion);
+                    Log.d("DEBUG", "Infracción removida: " + infraccionDescripcion + " con ID: " + infraccionId);
+                });
+                chipGroupInfracciones.addView(chip);
+            } else {
+                Log.e("DEBUG", "No se encontró ID para la infracción: " + infraccionDescripcion);
+            }
+        }
+    }
+    private void checkAndRequestPermissions() {
+        List<String> permissionsNeeded = new ArrayList<>();
+
+        // Permiso de cámara (necesario para todas las versiones)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            permissionsNeeded.add(Manifest.permission.CAMERA);
         }
 
-        if (!listPermissionsNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(this, listPermissionsNeeded.toArray(new String[listPermissionsNeeded.size()]), REQUEST_CAMERA_PERMISSION);
-            return false;
+        // Permisos de almacenamiento según versión de Android
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13 y superior
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_MEDIA_IMAGES);
+            }
+        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+            // Android 12 y anterior
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q &&
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            }
         }
-        return true;
+
+        if (!permissionsNeeded.isEmpty()) {
+            ActivityCompat.requestPermissions(this,
+                    permissionsNeeded.toArray(new String[0]),
+                    REQUEST_CAMERA_PERMISSION);
+        } else {
+            // Todos los permisos están concedidos, proceder con la captura de foto
+            dispatchTakePictureIntent();
+        }
     }
     private void checkCameraPermission() {
         try {
@@ -251,19 +380,53 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     private void dispatchTakePictureIntent() {
-        Log.d("CameraDebug", "Iniciando dispatchTakePictureIntent simplificado");
+        Log.d("CameraDebug", "Iniciando dispatchTakePictureIntent");
+
+        // Verificar permiso de cámara para Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) !=
+                    PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.CAMERA},
+                        REQUEST_CAMERA_PERMISSION);
+                return;
+            }
+        }
 
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
         try {
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
-            Log.d("CameraDebug", "Actividad de cámara iniciada");
+            // Crear el archivo para la imagen
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+                currentPhotoPaths[currentPhotoIndex] = photoFile.getAbsolutePath();
+            } catch (IOException ex) {
+                Log.e("CameraDebug", "Error creando archivo de imagen", ex);
+                mostrarError("Error al crear archivo para la foto");
+                return;
+            }
+
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        getApplicationContext().getPackageName() + ".fileprovider",
+                        photoFile);
+
+                // Otorgar permisos URI temporales
+                takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+
+                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            }
         } catch (ActivityNotFoundException e) {
-            Log.e("CameraDebug", "No se encontró una aplicación de cámara", e);
+            Log.e("CameraDebug", "No se encontró aplicación de cámara", e);
             mostrarMensaje("No se encontró una aplicación de cámara");
+        } catch (Exception e) {
+            Log.e("CameraDebug", "Error al iniciar la cámara: " + e.getMessage(), e);
+            mostrarMensaje("Error al iniciar la cámara");
         }
     }
-
     private void listarAplicacionesCamara() {
         Log.d("CameraDebug", "Listando aplicaciones de cámara disponibles");
         PackageManager packageManager = getPackageManager();
@@ -340,6 +503,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void initializeViews() {
+        chipGroupInfracciones = findViewById(R.id.chipGroupInfracciones);
         spinnerTipoEquipo = findViewById(R.id.spinnerTipoEquipo);
         etEquipo = findViewById(R.id.etEquipo);
         etMarcaCinemometro = findViewById(R.id.etMarcaCinemometro);
@@ -391,7 +555,7 @@ public class MainActivity extends AppCompatActivity {
         layoutHecho = findViewById(R.id.layoutHecho);
         layoutEspecificaciones = findViewById(R.id.layoutEspecificaciones);
 
-        ivPhotoPreview = findViewById(R.id.ivPhotoPreview);
+
 
         btnInsertarConductor = findViewById(R.id.btnInsertarConductor);
     }
@@ -417,18 +581,50 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupMarcaSpinner() {
-        List<String> marcas = new ArrayList<>();
-        marcas.add("Seleccione una marca");
-        marcas.add("Toyota");
-        marcas.add("Ford");
-        marcas.add("Chevrolet");
-        marcas.add("Volkswagen");
-        marcas.add("Otra");
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, marcas);
+        // Inicializa el spinner con un elemento de carga
+        ArrayAdapter<String> loadingAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item,
+                Collections.singletonList("Cargando marcas..."));
+        loadingAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerMarca.setAdapter(loadingAdapter);
+
+        // Llama a la función para cargar las marcas
+        cargarMarcas();
+    }
+
+
+    private void actualizarSpinnerMarcas(List<RespuestaMarcas.Marca> marcas) {
+        List<String> descripcionesMarcas = new ArrayList<>();
+        descripcionesMarcas.add("Seleccione una marca");
+        for (RespuestaMarcas.Marca marca : marcas) {
+            descripcionesMarcas.add(marca.getDescripcion());
+        }
+        descripcionesMarcas.add("Otra");
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, descripcionesMarcas);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerMarca.setAdapter(adapter);
     }
+    private void cargarMarcas() {
+        Call<RespuestaMarcas> call = apiService.obtenerMarcas("obtenerMarcas");
+        call.enqueue(new Callback<RespuestaMarcas>() {
+            @Override
+            public void onResponse(Call<RespuestaMarcas> call, Response<RespuestaMarcas> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<RespuestaMarcas.Marca> marcas = response.body().getMarcas();
+                    actualizarSpinnerMarcas(marcas);
+                } else {
+                    Log.e("API", "Error al obtener marcas: " + response.message());
+                    mostrarError("Error al cargar las marcas de vehículos");
+                }
+            }
 
+            @Override
+            public void onFailure(Call<RespuestaMarcas> call, Throwable t) {
+                Log.e("API", "Error de red al obtener marcas", t);
+                mostrarError("Error de conexión al cargar las marcas");
+            }
+        });
+    }
 
     private void setupTipoVehiculoSpinner() {
         List<String> tiposVehiculo = new ArrayList<>();
@@ -447,92 +643,54 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupInfraccionSpinner() {
-        List<String> infracciones = new ArrayList<>();
-        infracciones.add("Seleccione una infracción");
-        infracciones.add("Conducir en Estado de Ebriedad - Graduacion 0.10 a 0.50 gramos por litro de sangre");
-        infracciones.add("Conducir en Estado de Ebriedad - Graduacion 0.51 a 1.00 gramos por litro de sangre");
-        infracciones.add("Conducir en Estado de Ebriedad - Graduacion 1.01 a 1.50 gramos por litro de sangre");
-        infracciones.add("Conducir en Estado de Ebriedad - Graduacion Superior a 1.50 gramos por litro de sangre");
-        infracciones.add("Negarse a realizar el alcotest en ocasión de un operativo de control de tránsito");
-        infracciones.add("No Completar el ciclo del test de alcoholemia por aire espirado luego de tres intentos");
-        infracciones.add("Conducir bajo efectos de estupefacientes");
-        infracciones.add("Negarse a realizar el test de consumo de estupefacientes en ocasión de un operativo de control de tránsito");
-        infracciones.add("Conducir sin licencia y no estar habilitado para hacerlo");
-        infracciones.add("Conducir sin licencia y no estar habilitado para ello por causa de minoridad");
-        infracciones.add("Conducir con licencia adulterada en la que se evidencie violación a los requisitos exigidos por la normativa");
-        infracciones.add("Conducir con licencia vencida");
-        infracciones.add("Conducir con boleta de citación del inculpado vencida");
-        infracciones.add("Conducir con licencia no correspondiente a la categoría del vehículo");
-        infracciones.add("Girar a la Izquierda en Av. de Doble Mano, en lugares donde se encuentre expresamente prohibido");
-        infracciones.add("Circular en sentido contrario al establecido");
-        infracciones.add("Girar en U");
-        infracciones.add("Participar u organizar, en la via pública, competencias o destrezas de velocidad en motos o vehículos");
-        infracciones.add("No Respetar las Señales de los Semáforos");
-        infracciones.add("No Respetar las Indicaciones de los agentes encargados del tránsito");
-        infracciones.add("Estacionar sobre los delimitadores, rampas y en espacios exclusivos de estacionamiento");
-        infracciones.add("No Detener la marcha ante el cartel indicador PARE");
-        infracciones.add("No respetar controles rutinarios, vallas, conos de prevención");
-        infracciones.add("Obstaculizar, dificultar o impedir, actos de inspección que ejecuten los agentes de tránsito");
-        infracciones.add("Falta total o parcial de cualquiera de los dispositivos correspondientes a faros, luces reglamentarias");
-        infracciones.add("Circular con luces antirreglamentarias");
-        infracciones.add("Circular sin luces encendidas");
-        infracciones.add("Circular con vehículos de transporte de carga sin condiciones de seguridad ni señalización");
-        infracciones.add("Cruzar bocacalles a alta velocidad");
-        infracciones.add("Darse a la Fuga");
-        infracciones.add("Circular de manera contraria a las reglas de la buena conducción, realizando maniobras peligrosas");
-        infracciones.add("Circular con cantidad de pasajeros que excedan la capacidad permitida para el vehículo objeto de la infracción");
-        infracciones.add("Circular con menores de 10 años en el asiento delantero del vehículo");
-        infracciones.add("Circular con menores de 4 años a bordo sin el correspondiente uso del sistema de retención infantil");
-        infracciones.add("Circular con menores de 12 años a bordo de ciclomotores, motocicletas, motos, zootropos, y/o similares");
-        infracciones.add("Circular marcha atrás en forma indebida contrarias a las reglas de la buena conducción");
-        infracciones.add("Circular con motocicletas en lugares indebidos, veredas, ciclovías, u otro lugar expresamente prohibido");
-        infracciones.add("Adulteración de las documentaciones exigibles para la circulación");
-        infracciones.add("Negarse a exhibir la documentación del vehículo y/o licencia habilitante");
-        infracciones.add("Circular con cédula de identificación del vehículo ilegible, deteriorada o en condiciones antirreglamentarias");
-        infracciones.add("Circular sin cédula de identificación del vehículo");
-        infracciones.add("Conducir sin la póliza de seguro obligatorio vigente, sea en formato físico o digital");
-        infracciones.add("Circular sin la verificación técnica obligatoria vigente, o por encontrarse vencida");
-        infracciones.add("Circular sin la verificación técnica obligatoria vigente a partir del término del plazo de gracia o vencida");
-        infracciones.add("Circular sin chapa patente");
-        infracciones.add("Circular con chapa patente con plaquetas adicionales y/o modificaciones, ilegibles o con partes borradas");
-        infracciones.add("Conducir con permiso de circulación del RNPA, estando el mismo vencido");
-        infracciones.add("Circular sin extintor de incendio o que el mismo esté con carga vencida");
-        infracciones.add("Circular con vehículos que transportan explosivos y/o inflamables sin la debida autorización");
-        infracciones.add("Circular transportando combustible de manera antirreglamentaria en recipientes o envases no autorizados");
-        infracciones.add("Conducir con auriculares y/o dispositivos móviles, utilizados de forma manual");
-        infracciones.add("Circular el conductor y/o los pasajeros que lo acompañen sin el cinturón de seguridad");
-        infracciones.add("Estacionamiento o detención de vehículos en lugares reservados o de circulación exclusiva del servicio público");
-        infracciones.add("Estacionar en ochavas u otros espacios reservados por razones de visibilidad y/o seguridad");
-        infracciones.add("Estacionar en lugares prohibidos, sobre la vereda o entrada y salida de cocheras");
-        infracciones.add("Estacionar dentro de la planta urbana vehículos pesados fuera del horario autorizado para tal fin");
-        infracciones.add("Estacionar en lugares reservados para carga y descarga fuera de los horarios permitidos");
-        infracciones.add("Estacionar o detenerse en doble fila");
-        infracciones.add("Estacionar ciclomotores, motocicletas, motos, fuera del lugar reservado exclusivamente para estos");
-        infracciones.add("Estacionar en sentido contrario a la circulación en calles y/o avenidas de la ciudad");
-        infracciones.add("Estacionar o detenerse en vías multicarriles o avenidas, entorpeciendo la normal circulación");
-        infracciones.add("No respetar la prioridad de paso de vehículos que se presentan sobre la derecha de bocacalles o cruces");
-        infracciones.add("No ceder el paso a vehículos de bomberos, ambulancias, policías o de servicios públicos, en casos de urgencia");
-        infracciones.add("Circular con vehículos de transporte de pasajeros o de carga sin habilitación extendida");
-        infracciones.add("Ascender o descender pasajeros en bocacalles");
-        infracciones.add("No conservar la derecha en encrucijadas, virajes, puentes, o alcantarillas");
-        infracciones.add("Circular el conductor y/o acompañante sin casco reglamentario o utilizándolo de manera indebida");
-        infracciones.add("Circular a velocidad inferior a la correspondiente a su carril");
-        infracciones.add("Circular con vehículos con defensas delanteras y/o traseras, enganches sobresalientes, potentes peligrosos");
-        infracciones.add("Circular con licencia de conducir de otra jurisdicción luego de 90 días");
-        infracciones.add("Conducir sin licencia y acreditar la misma dentro del plazo dispuesto por el Juzgado");
-        infracciones.add("Circular con caño de escape abierto y/o modificado, emisión de ruidos fuertes sobre límites permitidos");
-        infracciones.add("No respetar las normas que regulan la circulación de peatones en sendas establecidas");
-        infracciones.add("Colocación o uso de bocinas antirreglamentarias");
-        infracciones.add("Interrumpir y/u obstruir innecesariamente las procesiones, desfiles cívico - militares o cortejos fúnebres");
-        infracciones.add("Falta de luz en chapa patente");
-        infracciones.add("Falta de limpiaparabrisas, parasol, paragolpe, balizas, cubierta neumática, apoyacabezas");
-        infracciones.add("Falta de espejo retrovisor, parabrisas de cristal o vidrio inastillable");
-        infracciones.add("Lavado de vehículos en playas, parques, paseos públicos, ríos, cuyas aguas desembocan en balnearios");
-        infracciones.add("Toda infracción a ordenanzas o reglamentos y cuya sanción no está prevista en la ordenanza de penalidades");
+        // Inicialmente muestra "Cargando infracciones..."
+        ArrayAdapter<String> loadingAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item,
+                Collections.singletonList("Cargando infracciones..."));
+        loadingAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerInfraccion.setAdapter(loadingAdapter);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, infracciones);
+        // Llama a la API para obtener las infracciones
+        Call<RespuestaInfracciones> call = apiService.obtenerInfracciones("obtenerInfracciones");
+        call.enqueue(new Callback<RespuestaInfracciones>() {
+            @Override
+            public void onResponse(Call<RespuestaInfracciones> call, Response<RespuestaInfracciones> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<RespuestaInfracciones.Infraccion> infracciones = response.body().getInfracciones();
+                    if (infracciones != null && !infracciones.isEmpty()) {
+                        actualizarSpinnerInfracciones(infracciones);
+                    } else {
+                        mostrarError("No se encontraron infracciones.");
+                    }
+                } else {
+                    Log.e("API", "Error al obtener infracciones: " + response.message());
+                    mostrarError("Error al cargar las infracciones");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<RespuestaInfracciones> call, Throwable t) {
+                Log.e("API", "Error de red al obtener infracciones", t);
+                mostrarError("Error de conexión al cargar las infracciones");
+            }
+        });
+    }
+    private void actualizarSpinnerInfracciones(List<RespuestaInfracciones.Infraccion> infracciones) {
+        List<String> descripcionesInfracciones = new ArrayList<>();
+        descripcionesInfracciones.add("Seleccione una infracción");
+        infraccionIdMap.clear();
+        for (RespuestaInfracciones.Infraccion infraccion : infracciones) {
+            descripcionesInfracciones.add(infraccion.getDescripcion());
+            infraccionIdMap.put(infraccion.getDescripcion(), infraccion.getId());
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, descripcionesInfracciones);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerInfraccion.setAdapter(adapter);
+
+        // Limpiar infracciones seleccionadas y chips
+        //infraccionesSeleccionadas.clear();
+        // chipGroupInfracciones.removeAllViews();
+
+        Log.d("DEBUG", "Infracciones cargadas: " + descripcionesInfracciones);
     }
 
 
@@ -565,7 +723,10 @@ public class MainActivity extends AppCompatActivity {
 
         btnTomarFoto.setOnClickListener(v -> mostrarOpcionesFoto());
         btnConectarImprimir.setOnClickListener(v -> checkBluetoothPermissions());
-        btnInsertarConductor.setOnClickListener(v -> insertarDatosConductor());
+        btnInsertarConductor.setOnClickListener(v -> {
+            Log.d("DEBUG", "Botón Insertar Conductor presionado. Infracciones seleccionadas: " + infraccionesSeleccionadas);
+            insertarDatosConductor();
+        });
 
 
     }
@@ -657,7 +818,6 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.READ_EXTERNAL_STORAGE
     };
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -667,49 +827,101 @@ public class MainActivity extends AppCompatActivity {
             if (requestCode == REQUEST_IMAGE_CAPTURE) {
                 Log.d("CameraDebug", "Imagen capturada con éxito");
 
-                if (currentPhotoPath != null && !currentPhotoPath.isEmpty()) {
-                    Log.d("CameraDebug", "Ruta de la foto: " + currentPhotoPath);
-                    File imagenFile = new File(currentPhotoPath);
+                if (currentPhotoPaths[currentPhotoIndex] != null && !currentPhotoPaths[currentPhotoIndex].isEmpty()) {
+                    Log.d("CameraDebug", "Ruta de la foto: " + currentPhotoPaths[currentPhotoIndex]);
+                    File imagenFile = new File(currentPhotoPaths[currentPhotoIndex]);
                     if (imagenFile.exists()) {
                         Log.d("CameraDebug", "Archivo de imagen existe");
                         procesarImagen(imagenFile);
+                        return; // Salimos después de procesar la imagen del archivo
                     } else {
                         Log.e("CameraDebug", "El archivo de imagen no existe en la ruta especificada");
-                        mostrarError("El archivo de imagen no se encontró");
                     }
-                } else {
-                    Log.d("CameraDebug", "currentPhotoPath es null o vacío, intentando obtener imagen del Intent");
-                    Bundle extras = data.getExtras();
-                    if (extras != null && extras.containsKey("data")) {
-                        Bitmap imageBitmap = (Bitmap) extras.get("data");
-                        if (imageBitmap != null) {
-                            Log.d("CameraDebug", "Imagen obtenida del Intent");
-                            procesarBitmap(imageBitmap);
+                }
+
+                // Si llegamos aquí, intentamos obtener la miniatura del Intent
+                if (data != null && data.getExtras() != null && data.getExtras().containsKey("data")) {
+                    Log.d("CameraDebug", "Intentando obtener miniatura del Intent");
+                    Bitmap imageBitmap = (Bitmap) data.getExtras().get("data");
+                    if (imageBitmap != null) {
+                        Log.d("CameraDebug", "Miniatura obtenida del Intent");
+                        procesarBitmap(imageBitmap);
+                    } else {
+                        Log.d("CameraDebug", "La miniatura es null, intentando recuperar por última ruta conocida");
+                        if (currentPhotoPaths[currentPhotoIndex] != null) {
+                            try {
+                                Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPaths[currentPhotoIndex]);
+                                if (bitmap != null) {
+                                    Log.d("CameraDebug", "Imagen recuperada de la ruta del archivo");
+                                    procesarBitmap(bitmap);
+                                } else {
+                                    Log.e("CameraDebug", "No se pudo decodificar la imagen del archivo");
+                                    mostrarError("No se pudo procesar la imagen");
+                                }
+                            } catch (Exception e) {
+                                Log.e("CameraDebug", "Error al procesar el archivo de imagen", e);
+                                mostrarError("Error al procesar la imagen");
+                            }
                         } else {
-                            Log.e("CameraDebug", "No se pudo obtener la imagen del Intent");
+                            Log.e("CameraDebug", "No hay datos de imagen disponibles");
                             mostrarError("No se pudo obtener la imagen");
                         }
-                    } else {
-                        Log.e("CameraDebug", "No se encontró la imagen en el Intent");
-                        mostrarError("No se encontró la imagen");
                     }
+                } else {
+                    Log.d("CameraDebug", "El Intent es null, intentando recuperar por última ruta conocida");
+                    if (currentPhotoPaths[currentPhotoIndex] != null) {
+                        try {
+                            Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPaths[currentPhotoIndex]);
+                            if (bitmap != null) {
+                                Log.d("CameraDebug", "Imagen recuperada de la ruta del archivo");
+                                procesarBitmap(bitmap);
+                            } else {
+                                Log.e("CameraDebug", "No se pudo decodificar la imagen del archivo");
+                                mostrarError("No se pudo procesar la imagen");
+                            }
+                        } catch (Exception e) {
+                            Log.e("CameraDebug", "Error al procesar el archivo de imagen", e);
+                            mostrarError("Error al procesar la imagen");
+                        }
+                    } else {
+                        Log.e("CameraDebug", "No hay datos de imagen disponibles");
+                        mostrarError("No se pudo obtener la imagen");
+                    }
+                }
+            } else if (requestCode == REQUEST_IMAGE_PICK) {
+                if (data != null && data.getData() != null) {
+                    Uri selectedImageUri = data.getData();
+                    try {
+                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
+                        procesarBitmap(bitmap);
+                    } catch (IOException e) {
+                        Log.e("CameraDebug", "Error al procesar la imagen seleccionada", e);
+                        mostrarError("Error al procesar la imagen seleccionada");
+                    }
+                } else {
+                    Log.e("CameraDebug", "No se pudo obtener la imagen seleccionada");
+                    mostrarError("No se pudo obtener la imagen seleccionada");
                 }
             }
         } else {
             Log.d("CameraDebug", "Resultado no OK o requestCode no reconocido");
-            mostrarError("No se pudo capturar la imagen");
+            mostrarError("No se pudo capturar o seleccionar la imagen");
         }
     }
-
-
     private void procesarImagen(File imagenFile) {
         try {
             Bitmap bitmap = BitmapFactory.decodeFile(imagenFile.getAbsolutePath());
             if (bitmap != null) {
-                ivPhotoPreview.setImageBitmap(bitmap);
-                imagenBase64Temporal = convertirImagenABase64(imagenFile);
-                Log.d("DEBUG", "imagenBase64Temporal configurado. Longitud: " + (imagenBase64Temporal != null ? imagenBase64Temporal.length() : "null"));
-                Log.d("CameraDebug", "Imagen procesada y convertida a base64");
+                photoPreviewViews[currentPhotoIndex].setImageBitmap(bitmap);
+                photoPreviewViews[currentPhotoIndex].setVisibility(View.VISIBLE);
+
+                String base64Image = convertirImagenABase64(imagenFile);
+                imagenBase64List.add(base64Image);
+
+                currentPhotoIndex++;
+                actualizarBotonTomarFoto();
+
+                Log.d("DEBUG", "Imagen procesada y convertida a base64. Total de imágenes: " + imagenBase64List.size());
             } else {
                 Log.e("CameraDebug", "No se pudo decodificar el bitmap desde el archivo");
                 mostrarError("No se pudo procesar la imagen");
@@ -722,13 +934,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void procesarBitmap(Bitmap bitmap) {
         try {
-            ivPhotoPreview.setImageBitmap(bitmap);
-            imagenBase64Temporal = convertirBitmapABase64(bitmap);
-            Log.d("CameraDebug", "Bitmap procesado y convertido a base64");
+            photoPreviewViews[currentPhotoIndex].setImageBitmap(bitmap);
+            photoPreviewViews[currentPhotoIndex].setVisibility(View.VISIBLE);
+
+            String base64Image = convertirBitmapABase64(bitmap);
+            imagenBase64List.add(base64Image);
+
+            currentPhotoIndex++;
+            actualizarBotonTomarFoto();
+
+            Log.d("CameraDebug", "Bitmap procesado y convertido a base64. Total de imágenes: " + imagenBase64List.size());
         } catch (Exception e) {
             Log.e("CameraDebug", "Error al procesar el bitmap", e);
             mostrarError("Error al procesar la imagen: " + e.getMessage());
         }
+    }
+    private void actualizarBotonTomarFoto() {
+        btnTomarFoto.setText("Agregar Foto (" + currentPhotoIndex + "/4)");
     }
     private void debugCameraAvailability() {
         Log.d("CameraDebug", "Iniciando verificación de disponibilidad de cámara");
@@ -774,11 +996,10 @@ public class MainActivity extends AppCompatActivity {
         }
         return actaIdActual;
     }
+    private void subirImagen(String actaId, List<String> imagenBase64List) {
+        Log.d("DEBUG", "Iniciando subirImagen. ActaId: " + actaId + ", Número de imágenes: " + imagenBase64List.size());
 
-    private void subirImagen(String actaId, String imagenBase64) {
-        Log.d("DEBUG", "Iniciando subirImagen. ActaId: " + actaId + ", longitud de imagen: " + imagenBase64.length());
-
-        Call<RespuestaSubirImagen> call = apiService.subirImagen("subirImagen", actaId, imagenBase64);
+        Call<RespuestaSubirImagen> call = apiService.subirImagen("subirImagen", actaId, imagenBase64List);
         call.enqueue(new Callback<RespuestaSubirImagen>() {
             @Override
             public void onResponse(Call<RespuestaSubirImagen> call, Response<RespuestaSubirImagen> response) {
@@ -786,14 +1007,22 @@ public class MainActivity extends AppCompatActivity {
                     RespuestaSubirImagen respuesta = response.body();
                     Log.d("DEBUG", "Respuesta de subirImagen: " + new Gson().toJson(respuesta));
                     if (respuesta.isSuccess()) {
-                        Log.d("DEBUG", "Imagen subida exitosamente: " + respuesta.getImagenUrl());
+                        Log.d("DEBUG", "Imágenes subidas exitosamente");
+                        mostrarMensaje("Imágenes subidas con éxito");
+                        if (respuesta.getImagenesUrls() != null) {
+                            for (String url : respuesta.getImagenesUrls()) {
+                                Log.d("DEBUG", "URL de imagen subida: " + url);
+                            }
+                        }
                     } else {
-                        Log.e("DEBUG", "Error al subir la imagen: " + respuesta.getError());
+                        Log.e("DEBUG", "Error al subir imágenes: " + respuesta.getError());
+                        mostrarError("Error al subir imágenes: " + respuesta.getError());
                     }
                 } else {
                     Log.e("DEBUG", "Error en la respuesta del servidor: " + response.code());
                     try {
                         Log.e("DEBUG", "Cuerpo del error: " + response.errorBody().string());
+                        mostrarError("Error en la respuesta del servidor: " + response.code());
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -802,7 +1031,8 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<RespuestaSubirImagen> call, Throwable t) {
-                Log.e("DEBUG", "Error de conexión al subir imagen", t);
+                Log.e("DEBUG", "Error de conexión al subir imágenes", t);
+                mostrarError("Error de conexión al subir imágenes: " + t.getMessage());
             }
         });
     }
@@ -961,7 +1191,8 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d("ImpresionMulta", "Imprimiendo encabezado");
             imprimirCampoEnLinea("SERIE A - 2024", "", lineWidth);
-            imprimirCampoEnLinea(" ", "", lineWidth);
+            imprimirCampoEnLinea("", "", lineWidth);
+
 
             Log.d("ImpresionMulta", "Imprimiendo número de boleta y fecha");
             imprimirCampoEnLinea("Numero de Boleta", tvNumero.getText().toString(), lineWidth);
@@ -997,7 +1228,11 @@ public class MainActivity extends AppCompatActivity {
 
             Log.d("ImpresionMulta", "Imprimiendo sección hecho");
             imprimirCampoEnLinea("HECHO", "", lineWidth);
-            imprimirCampoEnLinea("Infraccion", spinnerInfraccion.getSelectedItem().toString(), lineWidth);
+            // imprimirCampoEnLinea("Infraccion", spinnerInfraccion.getSelectedItem().toString(), lineWidth);
+            imprimirCampoEnLinea("Infracciones:", "", lineWidth);
+            for (String infraccion : infraccionesSeleccionadas) {
+                imprimirCampoEnLinea("- " + infraccion, "", lineWidth);
+            }
             imprimirCampoEnLinea("Lugar", etLugar.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Departamento Multa", etDepartamentoMulta.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Municipio Multa", etMunicipioMulta.getText().toString(), lineWidth);
@@ -1012,6 +1247,12 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Serie Cinemometro", etSerieCinemometro.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Codigo Aprobacion", etCodAprobacionCinemometro.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Valor Cinemometro", etValorCinemometro.getText().toString(), lineWidth);
+
+
+            imprimirCampoEnLinea("DATOS DEL INSPECTOR", "", lineWidth);
+            imprimirCampoEnLinea("Inspector", nombreInspector + " " + apellidoInspector, lineWidth);
+            imprimirCampoEnLinea("Legajo", legajoInspector, lineWidth);
+            imprimirCampoEnLinea(" ", "", lineWidth);
 
             // Avanzar papel y cortar
             outputStream.write(new byte[]{0x0A, 0x0A, 0x0A, 0x0A});
@@ -1071,130 +1312,159 @@ public class MainActivity extends AppCompatActivity {
     private void setActaIdActual(String id) {
         this.actaIdActual = id;
     }
+
     private void insertarDatosConductor() {
+        if (infraccionesSeleccionadas.isEmpty()) {
+            mostrarError("Debe seleccionar al menos una infracción");
+            return;
+        }
+
         try {
             Log.d("DEBUG", "Iniciando insertarDatosConductor");
 
-            // Obtención de valores
-            String numero = generarNumeroAleatorio();
-            String fecha = getCurrentDate();
-            String hora = getCurrentTime();
-            String dominio = etDominio != null ? etDominio.getText().toString() : "";
-            String lugar = etLugar != null ? etLugar.getText().toString() : "";
-            String infraccion = spinnerInfraccion != null ? spinnerInfraccion.getSelectedItem().toString() : "";
-            String infractorDni = etNumeroDocumento != null ? etNumeroDocumento.getText().toString() : "";
-            String infractorNombre = etApellidoNombre != null ? etApellidoNombre.getText().toString() : "";
-            String infractorDomicilio = etDomicilio != null ? etDomicilio.getText().toString() : "";
-            String infractorLocalidad = actvLocalidad != null ? actvLocalidad.getText().toString() : "";
-            String infractorCp = etCodPostal != null ? etCodPostal.getText().toString() : "";
-            String infractorProvincia = etProvincia != null ? etProvincia.getText().toString() : "";
-            String infractorPais = etPais != null ? etPais.getText().toString() : "";
-            String infractorLicencia = etLicencia != null ? etLicencia.getText().toString() : "";
-
-            // Logging detallado de los valores obtenidos
-            Log.d("DEBUG", "Valores obtenidos: " +
-                    "\nnumero: " + numero +
-                    "\nfecha: " + fecha +
-                    "\nhora: " + hora +
-                    "\ndominio: " + dominio +
-                    "\nlugar: " + lugar +
-                    "\ninfraccion: " + infraccion +
-                    "\ninfractorDni: " + infractorDni +
-                    "\ninfractorNombre: " + infractorNombre +
-                    "\ninfractorDomicilio: " + infractorDomicilio +
-                    "\ninfractorLocalidad: " + infractorLocalidad +
-                    "\ninfractorCp: " + infractorCp +
-                    "\ninfractorProvincia: " + infractorProvincia +
-                    "\ninfractorPais: " + infractorPais +
-                    "\ninfractorLicencia: " + infractorLicencia);
-
-            // Validaciones expandidas
-            if (infractorNombre.isEmpty()) {
-                mostrarError("Por favor, complete el nombre del infractor");
-                return;
-            }
-            if (infractorDni.isEmpty()) {
-                mostrarError("Por favor, complete el número de documento del infractor");
-                return;
-            }
-            if (dominio.isEmpty()) {
-                mostrarError("Por favor, complete el dominio del vehículo");
-                return;
-            }
-            if (lugar.isEmpty()) {
-                mostrarError("Por favor, complete el lugar de la infracción");
-                return;
-            }
-            if (infraccion.isEmpty() || infraccion.equals("Seleccione una infracción")) {
-                mostrarError("Por favor, seleccione una infracción");
-                return;
-            }
-
-            // Si todas las validaciones pasan, procedemos con la inserción
-            Log.d("DEBUG", "Todas las validaciones pasaron, procediendo con la inserción");
-
-            // Mostrar ProgressBar de forma segura
+            // Mostrar loading overlay
             runOnUiThread(() -> {
-                if (progressBar != null) {
-                    progressBar.setVisibility(View.VISIBLE);
+                if (loadingOverlay != null) {
+                    loadingOverlay.setVisibility(View.VISIBLE);
+                    btnInsertarConductor.setEnabled(false);
                 }
             });
 
+            // Crear un JSONArray con los IDs de las infracciones
+            JSONArray infraccionesJson = new JSONArray();
+            for (String infraccion : infraccionesSeleccionadas) {
+                String infraccionId = infraccionIdMap.get(infraccion);
+                if (infraccionId != null) {
+                    infraccionesJson.put(infraccionId);
+                }
+            }
+
+            Log.d("DEBUG", "IDs de infracciones a enviar: " + infraccionesJson.toString());
+
+            // Obtener datos del formulario
+            String numero = generarNumeroAleatorio();
+            String fecha = getCurrentDate();
+            String hora = getCurrentTime();
+            String dominio = etDominio.getText().toString().trim();
+            String lugar = etLugar.getText().toString().trim();
+            String infractorDni = etNumeroDocumento.getText().toString().trim();
+            String infractorNombre = etApellidoNombre.getText().toString().trim();
+            String infractorDomicilio = etDomicilio.getText().toString().trim();
+            String infractorLocalidad = actvLocalidad.getText().toString().trim();
+            String infractorCp = etCodPostal.getText().toString().trim();
+            String infractorProvincia = etProvincia.getText().toString().trim();
+            String infractorPais = etPais.getText().toString().trim();
+            String infractorLicencia = etLicencia.getText().toString().trim();
+            String tipoVehiculo = spinnerTipoVehiculo.getSelectedItem().toString();
+
+            // Validaciones
+            if (infractorNombre.isEmpty() || infractorDni.isEmpty() || dominio.isEmpty() || lugar.isEmpty()) {
+                runOnUiThread(() -> {
+                    if (loadingOverlay != null) {
+                        loadingOverlay.setVisibility(View.GONE);
+                        btnInsertarConductor.setEnabled(true);
+                    }
+                });
+                mostrarError("Por favor, complete todos los campos obligatorios");
+                return;
+            }
+
+            // Llamada a la API
             Call<RespuestaInsertarConductor> call = apiService.insertarConductor(
                     "insertarConductor",
-                    numero, fecha, hora, dominio, lugar, infraccion,
+                    numero, fecha, hora, dominio, lugar,
+                    infraccionesJson.toString(),
                     infractorDni, infractorNombre, infractorDomicilio, infractorLocalidad,
-                    infractorCp, infractorProvincia, infractorPais, infractorLicencia
+                    infractorCp, infractorProvincia, infractorPais, infractorLicencia,
+                    tipoVehiculo
             );
 
             call.enqueue(new Callback<RespuestaInsertarConductor>() {
                 @Override
                 public void onResponse(Call<RespuestaInsertarConductor> call, Response<RespuestaInsertarConductor> response) {
-                    // Ocultar ProgressBar de forma segura
-                    runOnUiThread(() -> {
-                        if (progressBar != null) {
-                            progressBar.setVisibility(View.GONE);
-                        }
-                    });
-
                     if (response.isSuccessful() && response.body() != null) {
                         RespuestaInsertarConductor respuesta = response.body();
                         if (respuesta.getMessage() != null) {
-                            mostrarMensaje(respuesta.getMessage());
-                            Log.d("DEBUG", "Respuesta exitosa: " + respuesta.getMessage());
-
-                            // Obtener el ID del acta insertada
                             String actaId = respuesta.getActaId();
                             if (actaId != null && !actaId.isEmpty()) {
-                                setActaIdActual(actaId); // Actualizar el ID del acta actual
-                                Log.d("DEBUG", "ID del acta insertada: " + actaId);
+                                setActaIdActual(actaId);
 
-                                // Subir la imagen si está disponible
-                                if (imagenBase64Temporal != null && !imagenBase64Temporal.isEmpty()) {
-                                    Log.d("DEBUG", "Llamando a subirImagen con actaId: " + actaId);
-                                    subirImagen(actaId, imagenBase64Temporal);
-                                } else {
-                                    Log.d("DEBUG", "No hay imagen para subir");
-                                    // Aquí podrías mostrar un mensaje al usuario si es necesario
-                                    mostrarMensaje("No se ha capturado ninguna imagen para esta acta.");
+                                // Contador de operaciones pendientes
+                                AtomicInteger operacionesPendientes = new AtomicInteger(0);
+
+                                // Contamos las operaciones que necesitamos realizar
+                                if (!imagenBase64List.isEmpty()) {
+                                    operacionesPendientes.incrementAndGet();
+                                }
+                                // Verificamos si hay datos de equipo de medición
+                                if (!etEquipo.getText().toString().trim().isEmpty()) {
+                                    operacionesPendientes.incrementAndGet();
                                 }
 
-                                // Insertar equipo de medición después de una inserción exitosa del acta
-                                insertarEquipoMedicion(actaId);
+                                // Si no hay operaciones adicionales, terminamos aquí
+                                if (operacionesPendientes.get() == 0) {
+                                    finalizarProceso(true);
+                                    return;
+                                }
 
-                                limpiarCampos(); // Limpia los campos después de una inserción exitosa
+                                // Si hay imágenes, las subimos
+                                if (!imagenBase64List.isEmpty()) {
+                                    Call<RespuestaSubirImagen> callImagen = apiService.subirImagen(
+                                            "subirImagen", actaId, imagenBase64List);
+                                    callImagen.enqueue(new Callback<RespuestaSubirImagen>() {
+                                        @Override
+                                        public void onResponse(Call<RespuestaSubirImagen> call,
+                                                               Response<RespuestaSubirImagen> response) {
+                                            if (operacionesPendientes.decrementAndGet() == 0) {
+                                                finalizarProceso(true);
+                                            }
+                                        }
+
+                                        @Override
+                                        public void onFailure(Call<RespuestaSubirImagen> call, Throwable t) {
+                                            mostrarError("Error al subir imágenes: " + t.getMessage());
+                                            if (operacionesPendientes.decrementAndGet() == 0) {
+                                                finalizarProceso(false);
+                                            }
+                                        }
+                                    });
+                                }
+
+                                // Si hay datos de equipo, los insertamos
+                                if (!etEquipo.getText().toString().trim().isEmpty()) {
+                                    insertarEquipoMedicion(actaId, new Callback<RespuestaInsertarEquipoMedicion>() {
+                                        @Override
+                                        public void onResponse(Call<RespuestaInsertarEquipoMedicion> call,
+                                                               Response<RespuestaInsertarEquipoMedicion> response) {
+                                            if (operacionesPendientes.decrementAndGet() == 0) {
+                                                finalizarProceso(true);
+                                            }
+                                        }
+
+                                        @Override
+                                        public void onFailure(Call<RespuestaInsertarEquipoMedicion> call, Throwable t) {
+                                            mostrarError("Error al guardar equipo: " + t.getMessage());
+                                            if (operacionesPendientes.decrementAndGet() == 0) {
+                                                finalizarProceso(false);
+                                            }
+                                        }
+                                    });
+                                }
                             } else {
+                                finalizarProceso(false);
                                 Log.e("DEBUG", "No se pudo obtener el ID del acta insertada");
-                                mostrarError("Error: No se pudo obtener el ID del acta");
                             }
                         } else if (respuesta.getError() != null) {
+                            finalizarProceso(false);
                             mostrarError("Error: " + respuesta.getError());
-                            Log.e("DEBUG", "Error en la respuesta: " + respuesta.getError());
                         }
                     } else {
+                        finalizarProceso(false);
                         try {
-                            String errorBody = response.errorBody() != null ? response.errorBody().string() : "Error desconocido";
-                            Log.e("DEBUG", "Error en la respuesta del servidor: " + response.code() + ", Body: " + errorBody);
+                            String errorBody = response.errorBody() != null ?
+                                    response.errorBody().string() : "Error desconocido";
+                            Log.e("DEBUG", "Error en la respuesta del servidor: " +
+                                    response.code() + ", Body: " + errorBody);
                             mostrarError("Error en la respuesta del servidor: " + response.code());
                         } catch (IOException e) {
                             Log.e("DEBUG", "Error al leer el cuerpo de la respuesta", e);
@@ -1204,24 +1474,34 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onFailure(Call<RespuestaInsertarConductor> call, Throwable t) {
-                    // Ocultar ProgressBar de forma segura
-                    runOnUiThread(() -> {
-                        if (progressBar != null) {
-                            progressBar.setVisibility(View.GONE);
-                        }
-                    });
-
+                    finalizarProceso(false);
                     mostrarError("Error de conexión: " + t.getMessage());
                     Log.e("DEBUG", "Error de conexión: " + t.getMessage());
                 }
             });
 
         } catch (Exception e) {
+            finalizarProceso(false);
             Log.e("DEBUG", "Excepción en insertarDatosConductor: " + e.getMessage());
             e.printStackTrace();
             mostrarError("Error inesperado: " + e.getMessage());
         }
     }
+
+    // Método auxiliar para finalizar el proceso
+    private void finalizarProceso(boolean exito) {
+        runOnUiThread(() -> {
+            if (loadingOverlay != null) {
+                loadingOverlay.setVisibility(View.GONE);
+                btnInsertarConductor.setEnabled(true);
+            }
+            if (exito) {
+                mostrarMensaje("Datos guardados exitosamente");
+                limpiarCampos();
+            }
+        });
+    }
+
     private void mostrarMensaje(final String mensaje) {
         try {
             runOnUiThread(() -> {
@@ -1244,7 +1524,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void limpiarCampos() {
-        // Limpia todos los campos del formulario
+        // Limpia todos los campos del
+        imagenBase64List.clear();
+        for (ImageView view : photoPreviewViews) {
+            view.setImageBitmap(null);
+            view.setVisibility(View.GONE);
+        }
+        currentPhotoIndex = 0;
+        actualizarBotonTomarFoto();
+
         if (etApellidoNombre != null) etApellidoNombre.setText("");
         if (etNumeroDocumento != null) etNumeroDocumento.setText("");
         if (etDomicilio != null) etDomicilio.setText("");
@@ -1256,8 +1544,6 @@ public class MainActivity extends AppCompatActivity {
         if (etLicencia != null) etLicencia.setText("");
         if (etDominio != null) etDominio.setText("");
         if (etLugar != null) etLugar.setText("");
-        if (spinnerInfraccion != null) spinnerInfraccion.setSelection(0);
-        setActaIdActual(null);
 
         // ... limpiar otros campos según sea necesario
     }
@@ -1271,8 +1557,7 @@ public class MainActivity extends AppCompatActivity {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
         return sdf.format(new Date());
     }
-
-    private void insertarEquipoMedicion(String actaId) {
+    private void insertarEquipoMedicion(String actaId, Callback<RespuestaInsertarEquipoMedicion> callback) {
         try {
             Log.d("DEBUG", "Iniciando insertarEquipoMedicion con Acta ID: " + actaId);
 
@@ -1298,15 +1583,11 @@ public class MainActivity extends AppCompatActivity {
             if (tipo.equals("Seleccione un tipo") || equipo.isEmpty() || marca.isEmpty() || modelo.isEmpty() ||
                     numeroSerie.isEmpty() || codigoAprobacion.isEmpty() || valorMedido.isEmpty()) {
                 mostrarError("Por favor, complete todos los campos del equipo de medición");
+                if (callback != null) {
+                    callback.onFailure(null, new Exception("Campos incompletos"));
+                }
                 return;
             }
-
-            // Mostrar ProgressBar
-            runOnUiThread(() -> {
-                if (progressBar != null) {
-                    progressBar.setVisibility(View.VISIBLE);
-                }
-            });
 
             Call<RespuestaInsertarEquipoMedicion> call = apiService.insertarEquipoMedicion(
                     "insertarEquipoMedicion",
@@ -1317,47 +1598,49 @@ public class MainActivity extends AppCompatActivity {
             call.enqueue(new Callback<RespuestaInsertarEquipoMedicion>() {
                 @Override
                 public void onResponse(Call<RespuestaInsertarEquipoMedicion> call, Response<RespuestaInsertarEquipoMedicion> response) {
-                    // Ocultar ProgressBar
-                    runOnUiThread(() -> {
-                        if (progressBar != null) {
-                            progressBar.setVisibility(View.GONE);
-                        }
-                    });
-
                     if (response.isSuccessful() && response.body() != null) {
                         if (response.body().getMessage() != null) {
-                            mostrarMensaje(response.body().getMessage());
                             Log.d("DEBUG", "Equipo de medición insertado: " + response.body().getMessage());
                             limpiarCamposEquipoMedicion();
+                            if (callback != null) {
+                                callback.onResponse(call, response);
+                            }
                         } else if (response.body().getError() != null) {
-                            mostrarError("Error al insertar equipo de medición: " + response.body().getError());
-                            Log.e("DEBUG", "Error al insertar equipo de medición: " + response.body().getError());
+                            String error = "Error al insertar equipo de medición: " + response.body().getError();
+                            Log.e("DEBUG", error);
+                            mostrarError(error);
+                            if (callback != null) {
+                                callback.onFailure(call, new Exception(error));
+                            }
                         }
                     } else {
                         try {
                             String errorBody = response.errorBody() != null ? response.errorBody().string() : "Error desconocido";
-                            mostrarError("Error en la respuesta del servidor al insertar equipo de medición: " + errorBody);
                             Log.e("DEBUG", "Error en la respuesta del servidor al insertar equipo de medición: " + errorBody);
                             Log.e("DEBUG", "Código de respuesta: " + response.code());
+                            mostrarError("Error en la respuesta del servidor al insertar equipo de medición");
+                            if (callback != null) {
+                                callback.onFailure(call, new Exception(errorBody));
+                            }
                         } catch (IOException e) {
                             e.printStackTrace();
                             Log.e("DEBUG", "Error al leer el cuerpo del error: " + e.getMessage());
+                            if (callback != null) {
+                                callback.onFailure(call, e);
+                            }
                         }
                     }
                 }
 
                 @Override
                 public void onFailure(Call<RespuestaInsertarEquipoMedicion> call, Throwable t) {
-                    // Ocultar ProgressBar
-                    runOnUiThread(() -> {
-                        if (progressBar != null) {
-                            progressBar.setVisibility(View.GONE);
-                        }
-                    });
-
-                    mostrarError("Error de conexión al insertar equipo de medición: " + t.getMessage());
-                    Log.e("DEBUG", "Error de conexión al insertar equipo de medición: " + t.getMessage());
+                    String error = "Error de conexión al insertar equipo de medición: " + t.getMessage();
+                    Log.e("DEBUG", error);
+                    mostrarError(error);
                     t.printStackTrace();
+                    if (callback != null) {
+                        callback.onFailure(call, t);
+                    }
                 }
             });
 
@@ -1365,9 +1648,11 @@ public class MainActivity extends AppCompatActivity {
             Log.e("DEBUG", "Excepción en insertarEquipoMedicion: " + e.getMessage());
             e.printStackTrace();
             mostrarError("Error inesperado: " + e.getMessage());
+            if (callback != null) {
+                callback.onFailure(null, e);
+            }
         }
     }
-
 
     private void limpiarCamposEquipoMedicion() {
         runOnUiThread(() -> {
@@ -1402,7 +1687,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
     private void actualizarSugerenciasLocalidad(List<RespuestaInfoLocalidad.InfoLocalidad> infoLocalidades) {
         Log.d("MainActivity", "Actualizando sugerencias con " + infoLocalidades.size() + " localidades");
         runOnUiThread(() -> {
@@ -1420,7 +1704,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void actualizarSpinnerTiposVehiculo(List<RespuestaTiposVehiculo.TipoVehiculo> tiposVehiculo) {
-        Log.d("MainActivity", "Actualizando Spinner con " + tiposVehiculo.size() + " tipos de vehículo");
         List<String> descripcionesTiposVehiculo = new ArrayList<>();
         for (RespuestaTiposVehiculo.TipoVehiculo tipo : tiposVehiculo) {
             descripcionesTiposVehiculo.add(tipo.getDescripcion());
@@ -1430,6 +1713,7 @@ public class MainActivity extends AppCompatActivity {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTipoVehiculo.setAdapter(adapter);
     }
+
     private void cargarDepartamentos(String provincia) {
         Call<RespuestaDepartamentos> call = apiService.obtenerDepartamentos("obtenerDepartamentos", provincia);
         //Call<RespuestaDepartamentos> call = apiService.obtenerDepartamentos("obtener_departamentos", provincia);
@@ -1459,7 +1743,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void cargarLocalidades(String provincia, String departamento) {
         Call<RespuestaLocalidades> call = apiService.obtenerLocalidades("obtenerLocalidades", provincia, departamento);
-       // Call<RespuestaLocalidades> call = apiService.obtenerLocalidades("obtener_localidades", provincia, departamento);
+        // Call<RespuestaLocalidades> call = apiService.obtenerLocalidades("obtener_localidades", provincia, departamento);
         call.enqueue(new Callback<RespuestaLocalidades>() {
             @Override
             public void onResponse(Call<RespuestaLocalidades> call, Response<RespuestaLocalidades> response) {
@@ -1494,29 +1778,105 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_PERMISSIONS) {
-            boolean todosPermisosOtorgados = true;
-            for (int resultado : grantResults) {
-                if (resultado != PackageManager.PERMISSION_GRANTED) {
-                    todosPermisosOtorgados = false;
+
+        boolean allPermissionsGranted = true;
+        for (int result : grantResults) {
+            if (result != PackageManager.PERMISSION_GRANTED) {
+                allPermissionsGranted = false;
+                break;
+            }
+        }
+
+        if (allPermissionsGranted) {
+            switch (requestCode) {
+                case REQUEST_CAMERA_PERMISSION:
+                    dispatchTakePictureIntent();
+                    break;
+                case REQUEST_GALLERY_PERMISSION:
+                    abrirGaleria();
+                    break;
+            }
+        } else {
+            // Si los permisos fueron denegados
+            boolean shouldShowRationale = false;
+            for (String permission : permissions) {
+                if (shouldShowRequestPermissionRationale(permission)) {
+                    shouldShowRationale = true;
                     break;
                 }
             }
-            if (todosPermisosOtorgados) {
-                dispatchTakePictureIntent();
+
+            if (shouldShowRationale) {
+                mostrarDialogoExplicativo();
             } else {
-                mostrarDialogoExplicativoPermisos();
+                // El usuario seleccionó "No volver a preguntar"
+                new AlertDialog.Builder(this)
+                        .setTitle("Permisos necesarios")
+                        .setMessage("Esta aplicación necesita permisos para funcionar correctamente. Por favor, habilítalos en la configuración de la aplicación.")
+                        .setPositiveButton("Ir a Configuración", (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            Uri uri = Uri.fromParts("package", getPackageName(), null);
+                            intent.setData(uri);
+                            startActivity(intent);
+                        })
+                        .setNegativeButton("Cancelar", null)
+                        .show();
             }
         }
     }
-
     // Modifica el método existente para usar la nueva verificación de permisos
     private void mostrarOpcionesFoto() {
-        verificarYSolicitarPermisos();
+        if (currentPhotoIndex >= 4) {
+            Toast.makeText(this, "Ya has tomado el máximo de 4 fotos", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Seleccionar imagen")
+                .setItems(new CharSequence[]{"Tomar foto", "Seleccionar de galería"}, (dialog, which) -> {
+                    if (which == 0) {
+                        // Verificar permisos para la cámara
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            // Android 13 y superior
+                            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) !=
+                                    PackageManager.PERMISSION_GRANTED) {
+                                ActivityCompat.requestPermissions(this,
+                                        new String[]{Manifest.permission.CAMERA},
+                                        REQUEST_CAMERA_PERMISSION);
+                            } else {
+                                dispatchTakePictureIntent();
+                            }
+                        } else {
+                            // Android 12 y anterior
+                            checkAndRequestPermissions();
+                        }
+                    } else {
+                        // Verificar permisos para la galería
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (ContextCompat.checkSelfPermission(this,
+                                    Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+                                ActivityCompat.requestPermissions(this,
+                                        new String[]{Manifest.permission.READ_MEDIA_IMAGES},
+                                        REQUEST_GALLERY_PERMISSION);
+                            } else {
+                                abrirGaleria();
+                            }
+                        } else {
+                            if (ContextCompat.checkSelfPermission(this,
+                                    Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                                ActivityCompat.requestPermissions(this,
+                                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                                        REQUEST_GALLERY_PERMISSION);
+                            } else {
+                                abrirGaleria();
+                            }
+                        }
+                    }
+                });
+        builder.show();
     }
     private void mostrarDialogoExplicativo() {
         new AlertDialog.Builder(this)
