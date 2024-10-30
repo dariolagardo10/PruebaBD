@@ -7,16 +7,27 @@ public class RespuestaLogin {
     private String message;
 
     @SerializedName("nombre")
-    private String nombre;
+    private String nombre = "";
 
     @SerializedName("apellido")
-    private String apellido;
+    private String apellido = "";
 
     @SerializedName("legajo")
-    private String legajo;
+    private String legajo = "";
 
+    @SerializedName("inspector_id")  // Nuevo campo
+    private String inspectorId = "";
+
+    @SerializedName("error")
+    private String error;
+
+    // Constructor por defecto
+    public RespuestaLogin() {
+    }
+
+    // Getters y setters con validación
     public String getMessage() {
-        return message;
+        return message != null ? message : "";
     }
 
     public void setMessage(String message) {
@@ -24,7 +35,7 @@ public class RespuestaLogin {
     }
 
     public String getNombre() {
-        return nombre;
+        return nombre != null ? nombre : "";
     }
 
     public void setNombre(String nombre) {
@@ -32,7 +43,7 @@ public class RespuestaLogin {
     }
 
     public String getApellido() {
-        return apellido;
+        return apellido != null ? apellido : "";
     }
 
     public void setApellido(String apellido) {
@@ -40,10 +51,30 @@ public class RespuestaLogin {
     }
 
     public String getLegajo() {
-        return legajo;
+        return legajo != null ? legajo : "";
     }
 
     public void setLegajo(String legajo) {
         this.legajo = legajo;
+    }
+
+    public String getError() {
+        return error != null ? error : "";
+    }
+
+    public void setError(String error) {
+        this.error = error;
+    }
+    public String getInspectorId() {
+        return inspectorId != null ? inspectorId : "";
+    }
+
+    public void setInspectorId(String inspectorId) {
+        this.inspectorId = inspectorId;
+    }
+
+    // Método auxiliar para verificar si hay error
+    public boolean hasError() {
+        return error != null && !error.isEmpty();
     }
 }

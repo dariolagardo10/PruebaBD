@@ -1,4 +1,6 @@
 package es.rcti.demoprinterplus.pruebabd;
+import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
+
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -81,14 +83,16 @@ public class MainActivity extends AppCompatActivity {
 
     // Declaración de vistas
     private static final int REQUEST_GALLERY_PERMISSION = 201;
+
     private LinearLayout photoPreviewContainer;
-    private ImageView[] photoPreviewViews = new ImageView[4];
+    private static final int MAX_PHOTOS = 2;
+    private ImageView[] photoPreviewViews = new ImageView[2];
     private List<String> imagenBase64List = new ArrayList<>();
     private int currentPhotoIndex = 0;
 
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_IMAGE_PICK = 2;
-    private String[] currentPhotoPaths = new String[4];
+    private String[] currentPhotoPaths = new String[2];
 
     private String imagenBase64Temporal;
 
@@ -118,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView ivPhotoPreview;
     private ChipGroup chipGroupInfracciones;
     private List<String> infraccionesSeleccionadas = new ArrayList<>();
+    private String inspectorId; // Nueva variable de clase
     private EditText
             etEquipo, etMarcaCinemometro, etModeloCinemometro, etSerieCinemometro,
             etCodAprobacionCinemometro, etValorCinemometro;
@@ -149,18 +154,25 @@ public class MainActivity extends AppCompatActivity {
 
         progressBar = findViewById(R.id.progressBar);
         super.onCreate(savedInstanceState);
+        inspectorId = getIntent().getStringExtra("INSPECTOR_ID");
+        if (inspectorId == null || inspectorId.isEmpty()) {
+            Log.e(TAG, "No se recibió el ID del inspector");
+            Toast.makeText(this, "Error: No se pudo obtener la identificación del inspector", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
         obtenerDatosInspector();
         // Obtener datos del inspector
         Intent intent = getIntent();
-     //   if (intent != null) {
-         //   nombreInspector = intent.getStringExtra("NOMBRE_INSPECTOR");
-         //   apellidoInspector = intent.getStringExtra("APELLIDO_INSPECTOR");
-         //   legajoInspector = intent.getStringExtra("LEGAJO_INSPECTOR");
+        //   if (intent != null) {
+        //   nombreInspector = intent.getStringExtra("NOMBRE_INSPECTOR");
+        //   apellidoInspector = intent.getStringExtra("APELLIDO_INSPECTOR");
+        //   legajoInspector = intent.getStringExtra("LEGAJO_INSPECTOR");
 
-         //   Log.d("MainActivity", "Datos del inspector recibidos - Nombre: " + nombreInspector +
-           //         ", Apellido: " + apellidoInspector +
-           //         ", Legajo: " + legajoInspector);
-       // }
+        //   Log.d("MainActivity", "Datos del inspector recibidos - Nombre: " + nombreInspector +
+        //         ", Apellido: " + apellidoInspector +
+        //         ", Legajo: " + legajoInspector);
+        // }
 
 
         Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
@@ -174,8 +186,8 @@ public class MainActivity extends AppCompatActivity {
         setupListeners();
 // Inicialización para múltiples fotos
         photoPreviewContainer = findViewById(R.id.photoPreviewContainer);
-        for (int i = 0; i < 4; i++) {
-            photoPreviewViews[i] = findViewById(getResources().getIdentifier("ivPhotoPreview" + (i+1), "id", getPackageName()));
+        for (int i = 0; i < 2; i++) {
+            photoPreviewViews[i] = findViewById(getResources().getIdentifier("ivPhotoPreview" + (i + 1), "id", getPackageName()));
         }
 
         btnTomarFoto = findViewById(R.id.btnTomarFoto);
@@ -232,6 +244,7 @@ public class MainActivity extends AppCompatActivity {
         setPosadasAsDefault();
 
     }
+
     // Método para mostrar/ocultar loading
     private void showLoading(boolean show) {
         runOnUiThread(() -> {
@@ -240,6 +253,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     private void obtenerDatosInspector() {
         Intent intent = getIntent();
         if (intent != null && intent.getExtras() != null) {
@@ -258,6 +272,7 @@ public class MainActivity extends AppCompatActivity {
             legajoInspector = "";
         }
     }
+
     private void agregarInfraccion(String infraccionDescripcion) {
         if (!infraccionesSeleccionadas.contains(infraccionDescripcion)) {
             String infraccionId = infraccionIdMap.get(infraccionDescripcion);
@@ -280,6 +295,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
     private void checkAndRequestPermissions() {
         List<String> permissionsNeeded = new ArrayList<>();
 
@@ -314,6 +330,7 @@ public class MainActivity extends AppCompatActivity {
             dispatchTakePictureIntent();
         }
     }
+
     private void checkCameraPermission() {
         try {
             Log.d("DEBUG", "Verificando permisos de cámara");
@@ -353,6 +370,7 @@ public class MainActivity extends AppCompatActivity {
                 new String[]{Manifest.permission.CAMERA},
                 REQUEST_CAMERA_PERMISSION);
     }
+
     private void setPosadasAsDefault() {
         // Establecer valores predeterminados
         etDepartamentoMulta.setText("Capital");
@@ -362,11 +380,13 @@ public class MainActivity extends AppCompatActivity {
         etDepartamentoMulta.setEnabled(true);
         etMunicipioMulta.setEnabled(true);
     }
+
     private void setupLocalidadAutoComplete() {
         actvLocalidad.setThreshold(1);
         actvLocalidad.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -376,9 +396,11 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void afterTextChanged(Editable s) {}
+            public void afterTextChanged(Editable s) {
+            }
         });
     }
+
     private void dispatchTakePictureIntent() {
         Log.d("CameraDebug", "Iniciando dispatchTakePictureIntent");
 
@@ -427,6 +449,7 @@ public class MainActivity extends AppCompatActivity {
             mostrarMensaje("Error al iniciar la cámara");
         }
     }
+
     private void listarAplicacionesCamara() {
         Log.d("CameraDebug", "Listando aplicaciones de cámara disponibles");
         PackageManager packageManager = getPackageManager();
@@ -441,6 +464,7 @@ public class MainActivity extends AppCompatActivity {
             Log.e("CameraDebug", "No se encontraron aplicaciones de cámara");
         }
     }
+
     private void mostrarDialogoSinCamara() {
         new AlertDialog.Builder(this)
                 .setTitle("Cámara no disponible")
@@ -449,7 +473,6 @@ public class MainActivity extends AppCompatActivity {
                 .setNegativeButton("Cancelar", (dialog, which) -> dialog.dismiss())
                 .show();
     }
-
 
 
     private void abrirGaleria() {
@@ -499,7 +522,6 @@ public class MainActivity extends AppCompatActivity {
             Log.e("MainActivity", "Excepción en buscarInfoLocalidad", e);
         }
     }
-
 
 
     private void initializeViews() {
@@ -556,8 +578,9 @@ public class MainActivity extends AppCompatActivity {
         layoutEspecificaciones = findViewById(R.id.layoutEspecificaciones);
 
 
-
         btnInsertarConductor = findViewById(R.id.btnInsertarConductor);
+
+        setupEquipoMedicionSpinner();
     }
 
     private void setupSpinners() {
@@ -566,7 +589,7 @@ public class MainActivity extends AppCompatActivity {
         setupTipoVehiculoSpinner();
         setupInfraccionSpinner();
         setupExpedidoPorSpinner();
-
+        setupEquipoMedicionSpinner();
         ArrayAdapter<CharSequence> adapterTipoEquipo = ArrayAdapter.createFromResource(this,
                 R.array.tipos_equipo, android.R.layout.simple_spinner_item);
         adapterTipoEquipo.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -604,6 +627,7 @@ public class MainActivity extends AppCompatActivity {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerMarca.setAdapter(adapter);
     }
+
     private void cargarMarcas() {
         Call<RespuestaMarcas> call = apiService.obtenerMarcas("obtenerMarcas");
         call.enqueue(new Callback<RespuestaMarcas>() {
@@ -674,6 +698,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     private void actualizarSpinnerInfracciones(List<RespuestaInfracciones.Infraccion> infracciones) {
         List<String> descripcionesInfracciones = new ArrayList<>();
         descripcionesInfracciones.add("Seleccione una infracción");
@@ -734,6 +759,7 @@ public class MainActivity extends AppCompatActivity {
     private void toggleVisibility(View view) {
         view.setVisibility(view.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
     }
+
     private void tomarFoto() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
@@ -762,7 +788,9 @@ public class MainActivity extends AppCompatActivity {
             mostrarMensaje("No se encontró una aplicación de cámara");
         }
     }
+
     private static final int REQUEST_PERMISSIONS = 1001;
+
     private void verificarYSolicitarPermisos() {
         List<String> permisosNecesarios = new ArrayList<>();
 
@@ -818,6 +846,7 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.READ_EXTERNAL_STORAGE
     };
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -908,6 +937,7 @@ public class MainActivity extends AppCompatActivity {
             mostrarError("No se pudo capturar o seleccionar la imagen");
         }
     }
+
     private void procesarImagen(File imagenFile) {
         try {
             Bitmap bitmap = BitmapFactory.decodeFile(imagenFile.getAbsolutePath());
@@ -949,9 +979,11 @@ public class MainActivity extends AppCompatActivity {
             mostrarError("Error al procesar la imagen: " + e.getMessage());
         }
     }
+
     private void actualizarBotonTomarFoto() {
-        btnTomarFoto.setText("Agregar Foto (" + currentPhotoIndex + "/4)");
+        btnTomarFoto.setText("Agregar Foto (" + currentPhotoIndex + "/2)");
     }
+
     private void debugCameraAvailability() {
         Log.d("CameraDebug", "Iniciando verificación de disponibilidad de cámara");
         PackageManager pm = getPackageManager();
@@ -981,11 +1013,13 @@ public class MainActivity extends AppCompatActivity {
             Log.e("CameraDebug", "Permiso de almacenamiento NO concedido");
         }
     }
+
     private void subirImagenDesdeUri(String actaId, Uri imageUri) {
         // Implementa la lógica para subir la imagen seleccionada de la galería
         // Puedes convertir el Uri a un File si es necesario
         // O adaptar tu método subirImagen para que acepte un Uri en lugar de un File
     }
+
     private String obtenerActaIdActual() {
         if (actaIdActual == null || actaIdActual.isEmpty()) {
             // Si no hay un ID de acta actual, genera uno nuevo
@@ -996,6 +1030,7 @@ public class MainActivity extends AppCompatActivity {
         }
         return actaIdActual;
     }
+
     private void subirImagen(String actaId, List<String> imagenBase64List) {
         Log.d("DEBUG", "Iniciando subirImagen. ActaId: " + actaId + ", Número de imágenes: " + imagenBase64List.size());
 
@@ -1036,6 +1071,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     private String convertirImagenABase64(File imagenFile) {
         try {
             Bitmap bitmap = BitmapFactory.decodeFile(imagenFile.getAbsolutePath());
@@ -1052,6 +1088,7 @@ public class MainActivity extends AppCompatActivity {
         byte[] imageBytes = baos.toByteArray();
         return Base64.encodeToString(imageBytes, Base64.DEFAULT);
     }
+
     private void checkBluetoothPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
@@ -1150,15 +1187,20 @@ public class MainActivity extends AppCompatActivity {
             mostrarMensaje("Error al enviar datos a la impresora: " + e.getMessage());
         }
     }
-
     private void printNewLine() {
         try {
-            outputStream.write(PrinterCommands.FEED_LINE);
+            if (outputStream != null) {
+                outputStream.write(PrinterCommands.FEED_LINE);
+                outputStream.flush(); // Aseguramos que se envíe inmediatamente
+            } else {
+                Log.e("PrinterError", "OutputStream es null");
+            }
         } catch (IOException e) {
+            Log.e("PrinterError", "Error al imprimir nueva línea: " + e.getMessage());
             e.printStackTrace();
+            mostrarMensaje("Error al avanzar el papel: " + e.getMessage());
         }
     }
-
     private void imprimirMulta() {
         Log.d("ImpresionMulta", "Iniciando impresión de multa");
         if (bluetoothSocket == null || !bluetoothSocket.isConnected()) {
@@ -1193,68 +1235,83 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("SERIE A - 2024", "", lineWidth);
             imprimirCampoEnLinea("", "", lineWidth);
 
+            Log.d("ImpresionMulta", "Imprimiendo numero de Acta y fecha");
 
-            Log.d("ImpresionMulta", "Imprimiendo número de boleta y fecha");
-            imprimirCampoEnLinea("Numero de Boleta", tvNumero.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Fecha", String.format("%02d/%02d/%04d", dia, mes, anio), lineWidth);
-            imprimirCampoEnLinea("Hora", String.format("%02d:%02d", hora, minuto), lineWidth);
+            printNewLine();
+            imprimirCampoEnLinea("Numero de Acta: ", obtenerActaIdActual(), lineWidth);
+            imprimirCampoEnLinea("Fecha: ", String.format("%02d/%02d/%04d", dia, mes, anio), lineWidth);
+            imprimirCampoEnLinea("Hora: ", String.format("%02d:%02d", hora, minuto), lineWidth);
+            printNewLine();
 
             Log.d("ImpresionMulta", "Imprimiendo sección conductor");
+            printNewLine();
             imprimirCampoEnLinea("CONDUCTOR", "", lineWidth);
-            imprimirCampoEnLinea("Apellido y Nombre", etApellidoNombre.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Tipo Documento", spinnerTipoDocumento.getSelectedItem().toString(), lineWidth);
-            imprimirCampoEnLinea("Numero Documento", etNumeroDocumento.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Domicilio", etDomicilio.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Localidad", actvLocalidad.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Codigo Postal", etCodPostal.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Departamento", actvDepartamento.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Provincia", etProvincia.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Pais", etPais.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Licencia", etLicencia.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Expedida por", spinnerExpedidaPor.getSelectedItem().toString(), lineWidth);
-            imprimirCampoEnLinea("Clase", etClase.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Vencimiento", etVencimiento.getText().toString(), lineWidth);
+            printNewLine();
+            imprimirCampoEnLinea("Apellido y Nombre: ", etApellidoNombre.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Tipo Documento: ", spinnerTipoDocumento.getSelectedItem().toString(), lineWidth);
+            imprimirCampoEnLinea("Numero Documento: ", etNumeroDocumento.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Domicilio: ", etDomicilio.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Localidad: ", actvLocalidad.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Codigo Postal: ", etCodPostal.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Departamento: ", actvDepartamento.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Provincia: ", etProvincia.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Pais: ", etPais.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Licencia: ", etLicencia.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Expedida por: ", spinnerExpedidaPor.getSelectedItem().toString(), lineWidth);
+            imprimirCampoEnLinea("Clase: ", etClase.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Vencimiento: ", etVencimiento.getText().toString(), lineWidth);
+            printNewLine();
 
             Log.d("ImpresionMulta", "Imprimiendo sección vehículo");
+            printNewLine();
             imprimirCampoEnLinea("VEHICULO", "", lineWidth);
-            imprimirCampoEnLinea("Dominio", etDominio.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Propietario", etPropietario.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Marca", spinnerMarca.getSelectedItem().toString(), lineWidth);
+            printNewLine();
+            imprimirCampoEnLinea("Dominio: ", etDominio.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Propietario: ", etPropietario.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Marca: ", spinnerMarca.getSelectedItem().toString(), lineWidth);
             if (spinnerMarca.getSelectedItem().toString().equals("Otra")) {
-                imprimirCampoEnLinea("Otra Marca", etOtraMarca.getText().toString(), lineWidth);
+                imprimirCampoEnLinea("Otra Marca: ", etOtraMarca.getText().toString(), lineWidth);
             }
-            imprimirCampoEnLinea("Modelo", etModeloVehiculo.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Tipo Vehiculo", spinnerTipoVehiculo.getSelectedItem().toString(), lineWidth);
+            imprimirCampoEnLinea("Modelo: ", etModeloVehiculo.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Tipo Vehiculo: ", spinnerTipoVehiculo.getSelectedItem().toString(), lineWidth);
+            printNewLine();
 
             Log.d("ImpresionMulta", "Imprimiendo sección hecho");
+            printNewLine();
             imprimirCampoEnLinea("HECHO", "", lineWidth);
-            // imprimirCampoEnLinea("Infraccion", spinnerInfraccion.getSelectedItem().toString(), lineWidth);
+            printNewLine();
             imprimirCampoEnLinea("Infracciones:", "", lineWidth);
             for (String infraccion : infraccionesSeleccionadas) {
-                imprimirCampoEnLinea("- " + infraccion, "", lineWidth);
+                imprimirCampoEnLinea("- ", infraccion, lineWidth);
             }
-            imprimirCampoEnLinea("Lugar", etLugar.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Departamento Multa", etDepartamentoMulta.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Municipio Multa", etMunicipioMulta.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Info Multa", etMultaInfo.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Lugar: ", etLugar.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Departamento Multa: ", etDepartamentoMulta.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Municipio Multa: ", etMunicipioMulta.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Info Multa: ", etMultaInfo.getText().toString(), lineWidth);
+            printNewLine();
 
             Log.d("ImpresionMulta", "Imprimiendo sección especificaciones");
+            printNewLine();
             imprimirCampoEnLinea("ESPECIFICACIONES", "", lineWidth);
-            imprimirCampoEnLinea("Tipo Equipo", spinnerTipoEquipo.getSelectedItem().toString(), lineWidth);
-            imprimirCampoEnLinea("Equipo", etEquipo.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Marca Cinemometro", etMarcaCinemometro.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Modelo Cinemometro", etModeloCinemometro.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Serie Cinemometro", etSerieCinemometro.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Codigo Aprobacion", etCodAprobacionCinemometro.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Valor Cinemometro", etValorCinemometro.getText().toString(), lineWidth);
+            printNewLine();
+            imprimirCampoEnLinea("Tipo Equipo: ", spinnerTipoEquipo.getSelectedItem().toString(), lineWidth);
+            imprimirCampoEnLinea("Equipo: ", etEquipo.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Marca Cinemometro: ", etMarcaCinemometro.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Modelo Cinemometro: ", etModeloCinemometro.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Serie Cinemometro: ", etSerieCinemometro.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Codigo Aprobacion: ", etCodAprobacionCinemometro.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Valor Cinemometro: ", etValorCinemometro.getText().toString(), lineWidth);
+            printNewLine();
 
-
+            Log.d("ImpresionMulta", "Imprimiendo sección datos del inspector");
+            printNewLine();
             imprimirCampoEnLinea("DATOS DEL INSPECTOR", "", lineWidth);
-            imprimirCampoEnLinea("Inspector", nombreInspector + " " + apellidoInspector, lineWidth);
-            imprimirCampoEnLinea("Legajo", legajoInspector, lineWidth);
-            imprimirCampoEnLinea(" ", "", lineWidth);
-
-            // Avanzar papel y cortar
+            printNewLine();
+            imprimirCampoEnLinea("Inspector: ", nombreInspector + " " + apellidoInspector, lineWidth);
+            imprimirCampoEnLinea("Legajo: ", legajoInspector, lineWidth);
+            printNewLine();
+            printNewLine();
+            imprimirCampoEnLinea("LA PRESENTE SERA ELEVADA PARA SU INTERVENCION A LA AUTORIDAD DE JUZGAMIENTO DEL TRIBUNAL MUNICIPAL DE FALTAS, CON DOMICILIO EN: SAN MARTIN 1555 POSADAS, DONDE PODRA OFRECER DESCARGO Y EJERCER SU DERECHO DE DEFENSA EN LOS TERMINOS DE LOS ARTS.69,70 Y 71 DE LA LEY 24.449.", "", lineWidth);
             outputStream.write(new byte[]{0x0A, 0x0A, 0x0A, 0x0A});
             outputStream.write(new byte[]{0x1D, 0x56, 0x01}); // Corte parcial
 
@@ -1266,41 +1323,236 @@ public class MainActivity extends AppCompatActivity {
             Log.e("ImpresionMulta", "Error al imprimir: " + e.getMessage(), e);
             mostrarMensaje("Error al imprimir: " + e.getMessage());
         } finally {
-            try {
-                if (outputStream != null) {
-                    outputStream.close();
-                }
-            } catch (IOException e) {
-                Log.e("ImpresionMulta", "Error al cerrar OutputStream: " + e.getMessage(), e);
-            }
+
         }
+    }
+    private void setupEquipoMedicionSpinner() {
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.tipos_equipo, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerTipoEquipo.setAdapter(adapter);
+
+        spinnerTipoEquipo.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String seleccion = parent.getItemAtPosition(position).toString();
+                Log.d("EquipoMedicion", "Equipo seleccionado: " + seleccion);
+                autocompletarEquipoMedicion(seleccion);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                limpiarCamposEquipoMedicion();
+            }
+        });
+    }
+
+    private void autocompletarEquipoMedicion(String tipoEquipo) {
+        Log.d("EquipoMedicion", "Autocompleting para: " + tipoEquipo);
+        runOnUiThread(() -> {
+            switch (tipoEquipo) {
+                case "Etilómetro":
+                    Toast.makeText(this, "Seleccionado: Etilometro", Toast.LENGTH_SHORT).show();
+                    if (etEquipo != null) etEquipo.setText("Etilometro con dispositivo impresor");
+                    if (etMarcaCinemometro != null) etMarcaCinemometro.setText("ACS");
+                    if (etModeloCinemometro != null) etModeloCinemometro.setText("SAFIR EVOLUTION");
+                    if (etCodAprobacionCinemometro != null) etCodAprobacionCinemometro.setText("ET 10-2253");
+                    if (etValorCinemometro != null) etValorCinemometro.setText("");
+                    mostrarDialogoSeleccionModelo();
+                    break;
+
+                case "Decibelímetro":
+                    Toast.makeText(this, "Seleccionado: Decibelimetro", Toast.LENGTH_SHORT).show();
+                    if (etEquipo != null) etEquipo.setText("Decibelimetro");
+                    if (etMarcaCinemometro != null) etMarcaCinemometro.setText("Uni-T");
+                    if (etModeloCinemometro != null) etModeloCinemometro.setText("UT353");
+                    if (etSerieCinemometro != null) etSerieCinemometro.setText("C203115656 (96697)");
+                    if (etCodAprobacionCinemometro != null) etCodAprobacionCinemometro.setText("C12122301");
+                    if (etValorCinemometro != null) etValorCinemometro.setText("");
+                    break;
+
+                case "Cinemómetro":
+                    Toast.makeText(this, "Seleccionado: Cinemómetro - Complete los datos manualmente", Toast.LENGTH_SHORT).show();
+                    // Primero limpiamos todos los campos
+                    limpiarCamposEquipoMedicion();
+                    // Luego solo establecemos el tipo de equipo
+                    if (etEquipo != null) etEquipo.setText("Cinemómetro");
+                    // Hacemos los campos editables
+                    if (etMarcaCinemometro != null) {
+                        etMarcaCinemometro.setEnabled(true);
+                        etMarcaCinemometro.setFocusableInTouchMode(true);
+                    }
+                    if (etModeloCinemometro != null) {
+                        etModeloCinemometro.setEnabled(true);
+                        etModeloCinemometro.setFocusableInTouchMode(true);
+                    }
+                    if (etSerieCinemometro != null) {
+                        etSerieCinemometro.setEnabled(true);
+                        etSerieCinemometro.setFocusableInTouchMode(true);
+                    }
+                    if (etCodAprobacionCinemometro != null) {
+                        etCodAprobacionCinemometro.setEnabled(true);
+                        etCodAprobacionCinemometro.setFocusableInTouchMode(true);
+                    }
+                    if (etValorCinemometro != null) {
+                        etValorCinemometro.setEnabled(true);
+                        etValorCinemometro.setFocusableInTouchMode(true);
+                    }
+                    break;
+
+                case "Seleccione un tipo":
+                default:
+                    limpiarCamposEquipoMedicion();
+                    break;
+            }
+        });
+    }
+
+
+    private void mostrarDialogoSeleccionModelo() {
+        runOnUiThread(() -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Seleccione el modelo específico");
+
+            final String[] modelos = getResources().getStringArray(R.array.etilometros);
+
+            builder.setItems(modelos, (dialog, which) -> {
+                String modeloSeleccionado = modelos[which];
+                Log.d("EquipoMedicion", "Modelo seleccionado: " + modeloSeleccionado);
+
+                // Separar el modelo y el número de serie
+                String[] partes = modeloSeleccionado.split(" - ");
+                if (partes.length == 2) {
+                    if (etModeloCinemometro != null) etModeloCinemometro.setText(partes[0]);
+                    if (etSerieCinemometro != null) etSerieCinemometro.setText(partes[1]);
+
+                    // Asignar precintos según el modelo seleccionado
+                    switch (partes[1]) {
+                        case "SESAH1R016002624":
+                            if (etCodAprobacionCinemometro != null)
+                                etCodAprobacionCinemometro.setText("B94097 (A) / B94098 (A) / B94099 (A)(Impresora)");
+                            break;
+                        case "SESAH1Q111001627":
+                            if (etCodAprobacionCinemometro != null)
+                                etCodAprobacionCinemometro.setText("R7217 (A) / R7218 (A) / R7219 (A)(Impresora)");
+                            break;
+                        case "SESAH1P319001342":
+                            if (etCodAprobacionCinemometro != null)
+                                etCodAprobacionCinemometro.setText("R7214 (A) / R7215 (A) / R7216 (A)(Impresora)");
+                            break;
+                        case "SESAH1T206003896":
+                            if (etCodAprobacionCinemometro != null)
+                                etCodAprobacionCinemometro.setText("B94100 (A) / B94101 (A) / B94102 (A)(Impresora)");
+                            break;
+                    }
+
+                    Toast.makeText(MainActivity.this,
+                            "Modelo seleccionado: " + partes[0],
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        });
+    }
+    private void mostrarDialogoSeleccionEquipo(String tipoArray) {
+        runOnUiThread(() -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Seleccione el Equipo");
+
+            // Obtener el array correspondiente según el tipo
+            int arrayId = getResources().getIdentifier(tipoArray, "array", getPackageName());
+            final String[] equipos = getResources().getStringArray(arrayId);
+
+            builder.setItems(equipos, (dialog, which) -> {
+                // Extraer información del equipo seleccionado
+                String equipoSeleccionado = equipos[which];
+                String[] partes = equipoSeleccionado.split(" - ");
+
+                if (etModeloCinemometro != null) {
+                    etModeloCinemometro.setText(partes[0]);
+                }
+                if (etSerieCinemometro != null) {
+                    etSerieCinemometro.setText(partes[1]);
+                }
+
+                // Cargar precintos correspondientes si es un etilómetro
+                if (tipoArray.equals("etilometros")) {
+                    int precintosArrayId = getResources().getIdentifier(
+                            "precintos_etilometro_" + (which + 1),
+                            "array",
+                            getPackageName()
+                    );
+                    String[] precintos = getResources().getStringArray(precintosArrayId);
+                    StringBuilder precintosStr = new StringBuilder();
+                    for (String precinto : precintos) {
+                        if (precintosStr.length() > 0) precintosStr.append(" / ");
+                        precintosStr.append(precinto);
+                    }
+                    if (etCodAprobacionCinemometro != null) {
+                        etCodAprobacionCinemometro.setText(precintosStr.toString());
+                    }
+                }
+            });
+
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        });
     }
     private void imprimirCampoEnLinea(String etiqueta, String valor, int lineWidth) {
         try {
-            if (valor == null) {
-                valor = "";
+            String texto = etiqueta + valor;
+            // Dividimos el texto en palabras
+            String[] palabras = texto.split(" ");
+            StringBuilder lineaActual = new StringBuilder();
+            List<String> palabrasEnLinea = new ArrayList<>();
+
+            for (String palabra : palabras) {
+                if (lineaActual.length() + palabra.length() + 1 <= lineWidth) {
+                    if (lineaActual.length() > 0) {
+                        lineaActual.append(" ");
+                    }
+                    lineaActual.append(palabra);
+                    palabrasEnLinea.add(palabra);
+                } else {
+                    if (!palabrasEnLinea.isEmpty()) {
+                        // Justificar la línea actual
+                        int espaciosNecesarios = lineWidth - (lineaActual.length() - (palabrasEnLinea.size() - 1));
+                        int espaciosExtra = palabrasEnLinea.size() > 1 ? espaciosNecesarios - (palabrasEnLinea.size() - 1) : 0;
+
+                        StringBuilder lineaJustificada = new StringBuilder();
+                        for (int i = 0; i < palabrasEnLinea.size(); i++) {
+                            lineaJustificada.append(palabrasEnLinea.get(i));
+                            if (i < palabrasEnLinea.size() - 1) {
+                                int espaciosAdicionales = espaciosExtra / (palabrasEnLinea.size() - 1);
+                                if (i < espaciosExtra % (palabrasEnLinea.size() - 1)) {
+                                    espaciosAdicionales++;
+                                }
+                                // Reemplazamos String.repeat() con un loop
+                                for (int j = 0; j < espaciosAdicionales + 1; j++) {
+                                    lineaJustificada.append(" ");
+                                }
+                            }
+                        }
+                        outputStream.write((lineaJustificada.toString() + "\n").getBytes());
+                    }
+                    // Comenzar nueva línea
+                    lineaActual = new StringBuilder(palabra);
+                    palabrasEnLinea.clear();
+                    palabrasEnLinea.add(palabra);
+                }
             }
 
-            StringBuilder linea = new StringBuilder(etiqueta + ": " + valor);
-
-            while (linea.length() > 0) {
-                if (linea.length() <= lineWidth) {
-                    outputStream.write((linea.toString() + "\n").getBytes());
-                    break;
-                } else {
-                    String lineaParcial = linea.substring(0, lineWidth);
-                    outputStream.write((lineaParcial + "\n").getBytes());
-                    linea = new StringBuilder(linea.substring(lineWidth));
-                }
+            // Imprimir la última línea (sin justificar)
+            if (lineaActual.length() > 0) {
+                outputStream.write((lineaActual.toString() + "\n").getBytes());
             }
         } catch (IOException e) {
             Log.e("ImpresionMulta", "Error al imprimir campo: " + etiqueta, e);
             throw new RuntimeException("Error al imprimir campo: " + etiqueta, e);
         }
     }
-
-
-
     // Método para generar un nuevo ID de acta (ya existente en tu código)
     private String generarNumeroAleatorio() {
         Random random = new Random();
@@ -1322,15 +1574,17 @@ public class MainActivity extends AppCompatActivity {
         try {
             Log.d("DEBUG", "Iniciando insertarDatosConductor");
 
-            // Mostrar loading overlay
-            runOnUiThread(() -> {
-                if (loadingOverlay != null) {
-                    loadingOverlay.setVisibility(View.VISIBLE);
-                    btnInsertarConductor.setEnabled(false);
-                }
-            });
+            String inspectorId = getIntent().getStringExtra("INSPECTOR_ID");
+            if (inspectorId == null || inspectorId.isEmpty()) {
+                mostrarError("No se pudo obtener la identificación del inspector");
+                return;
+            }
 
-            // Crear un JSONArray con los IDs de las infracciones
+            // Mostrar loading overlay
+            showLoading(true);
+            btnInsertarConductor.setEnabled(false);
+
+            // Preparar datos
             JSONArray infraccionesJson = new JSONArray();
             for (String infraccion : infraccionesSeleccionadas) {
                 String infraccionId = infraccionIdMap.get(infraccion);
@@ -1339,10 +1593,9 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            Log.d("DEBUG", "IDs de infracciones a enviar: " + infraccionesJson.toString());
-
-            // Obtener datos del formulario
+            // Obtener y validar datos del formulario
             String numero = generarNumeroAleatorio();
+            tvNumero.setText(numero);
             String fecha = getCurrentDate();
             String hora = getCurrentTime();
             String dominio = etDominio.getText().toString().trim();
@@ -1356,18 +1609,38 @@ public class MainActivity extends AppCompatActivity {
             String infractorPais = etPais.getText().toString().trim();
             String infractorLicencia = etLicencia.getText().toString().trim();
             String tipoVehiculo = spinnerTipoVehiculo.getSelectedItem().toString();
+            String marcaVehiculo = spinnerMarca.getSelectedItem().toString();
+            String propietario = etPropietario.getText().toString().trim();
+            String modeloVehiculo = etModeloVehiculo.getText().toString().trim();
+            String departamento = etDepartamentoMulta.getText().toString().trim();
+            String municipio = etMunicipioMulta.getText().toString().trim();
+            String observaciones = etMultaInfo.getText().toString().trim();
 
-            // Validaciones
-            if (infractorNombre.isEmpty() || infractorDni.isEmpty() || dominio.isEmpty() || lugar.isEmpty()) {
-                runOnUiThread(() -> {
-                    if (loadingOverlay != null) {
-                        loadingOverlay.setVisibility(View.GONE);
-                        btnInsertarConductor.setEnabled(true);
-                    }
-                });
+            // Validación de campos requeridos
+            if (TextUtils.isEmpty(infractorNombre) || TextUtils.isEmpty(infractorDni) ||
+                    TextUtils.isEmpty(dominio) || TextUtils.isEmpty(lugar) ||
+                    TextUtils.isEmpty(propietario) || TextUtils.isEmpty(modeloVehiculo) ||
+                    TextUtils.isEmpty(departamento) || TextUtils.isEmpty(municipio)) {
+                showLoading(false);
+                btnInsertarConductor.setEnabled(true);
                 mostrarError("Por favor, complete todos los campos obligatorios");
                 return;
             }
+
+            // Manejar caso de "Otra" marca
+            if (marcaVehiculo.equals("Otra")) {
+                marcaVehiculo = etOtraMarca.getText().toString().trim();
+                if (marcaVehiculo.isEmpty()) {
+                    showLoading(false);
+                    btnInsertarConductor.setEnabled(true);
+                    mostrarError("Por favor, ingrese la marca del vehículo");
+                    return;
+                }
+            }
+
+            // Guardar datos para uso en callbacks
+            final List<String> imagenesPendientes = new ArrayList<>(imagenBase64List);
+            final boolean tieneEquipo = !TextUtils.isEmpty(etEquipo.getText().toString().trim());
 
             // Llamada a la API
             Call<RespuestaInsertarConductor> call = apiService.insertarConductor(
@@ -1376,9 +1649,15 @@ public class MainActivity extends AppCompatActivity {
                     infraccionesJson.toString(),
                     infractorDni, infractorNombre, infractorDomicilio, infractorLocalidad,
                     infractorCp, infractorProvincia, infractorPais, infractorLicencia,
-                    tipoVehiculo
+                    tipoVehiculo,
+                    inspectorId,
+                    marcaVehiculo,
+                    propietario,
+                    modeloVehiculo,
+                    departamento,
+                    municipio,
+                    observaciones
             );
-
             call.enqueue(new Callback<RespuestaInsertarConductor>() {
                 @Override
                 public void onResponse(Call<RespuestaInsertarConductor> call, Response<RespuestaInsertarConductor> response) {
@@ -1488,6 +1767,71 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    // Método auxiliar para mostrar/ocultar loading
+
+    // Métodos auxiliares para manejo de errores
+    private void handleErrorResponse(Response<?> response, String prefix) throws IOException {
+        String errorBody = response.errorBody() != null ? response.errorBody().string() : "Error desconocido";
+        String message = String.format("%s: %d, %s", prefix, response.code(), errorBody);
+        Log.e("DEBUG", message);
+        mostrarError(message);
+    }
+
+    private void handleError(String prefix, Throwable t) {
+        String message = t != null ? String.format("%s: %s", prefix, t.getMessage()) : prefix;
+        Log.e("DEBUG", message, t);
+        mostrarError(message);
+    }
+    private void handleErrorMessage(String prefix, String errorMessage) {
+        String message = String.format("%s: %s", prefix, errorMessage);
+        Log.e("DEBUG", message);
+        mostrarError(message);
+    }
+
+
+    private void handleException(String operation, Exception e) {
+        String message = String.format("Error en %s: %s", operation, e.getMessage());
+        Log.e("DEBUG", message, e);
+        mostrarError(message);
+    }
+
+
+    private void subirImagenes(String actaId, AtomicInteger operacionesPendientes) {
+        Call<RespuestaSubirImagen> callImagen = apiService.subirImagen("subirImagen", actaId, imagenBase64List);
+        callImagen.enqueue(new Callback<RespuestaSubirImagen>() {
+            @Override
+            public void onResponse(Call<RespuestaSubirImagen> call, Response<RespuestaSubirImagen> response) {
+                try {
+                    if (response.isSuccessful() && response.body() != null) {
+                        Log.d("DEBUG", "Imágenes subidas exitosamente");
+                        if (operacionesPendientes.decrementAndGet() == 0) {
+                            finalizarProceso(true);
+                        }
+                    } else {
+                        handleErrorResponse(response, "Error al subir imágenes");
+                        if (operacionesPendientes.decrementAndGet() == 0) {
+                            finalizarProceso(false);
+                        }
+                    }
+                } catch (IOException e) {
+                    handleException("subir imágenes", e);
+                    if (operacionesPendientes.decrementAndGet() == 0) {
+                        finalizarProceso(false);
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<RespuestaSubirImagen> call, Throwable t) {
+                handleError("Error al subir imágenes", t);
+                if (operacionesPendientes.decrementAndGet() == 0) {
+                    finalizarProceso(false);
+                }
+            }
+        });
+    }
+
     // Método auxiliar para finalizar el proceso
     private void finalizarProceso(boolean exito) {
         runOnUiThread(() -> {
@@ -1522,32 +1866,63 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, error, Toast.LENGTH_LONG).show();
         Log.e("DEBUG", error);
     }
-
     private void limpiarCampos() {
-        // Limpia todos los campos del
-        imagenBase64List.clear();
-        for (ImageView view : photoPreviewViews) {
-            view.setImageBitmap(null);
-            view.setVisibility(View.GONE);
-        }
-        currentPhotoIndex = 0;
-        actualizarBotonTomarFoto();
+        runOnUiThread(() -> {
+            // Limpiar imágenes
+            imagenBase64List.clear();
+            for (ImageView view : photoPreviewViews) {
+                view.setImageBitmap(null);
+                view.setVisibility(View.GONE);
+            }
+            currentPhotoIndex = 0;
+            actualizarBotonTomarFoto();
 
-        if (etApellidoNombre != null) etApellidoNombre.setText("");
-        if (etNumeroDocumento != null) etNumeroDocumento.setText("");
-        if (etDomicilio != null) etDomicilio.setText("");
-        if (actvLocalidad != null) actvLocalidad.setText("");
-        if (etCodPostal != null) etCodPostal.setText("");
-        if (actvDepartamento != null) actvDepartamento.setText("");
-        if (etProvincia != null) etProvincia.setText("");
-        if (etPais != null) etPais.setText("");
-        if (etLicencia != null) etLicencia.setText("");
-        if (etDominio != null) etDominio.setText("");
-        if (etLugar != null) etLugar.setText("");
+            // Limpiar campos del conductor
+            if (etApellidoNombre != null) etApellidoNombre.setText("");
+            if (etNumeroDocumento != null) etNumeroDocumento.setText("");
+            if (etDomicilio != null) etDomicilio.setText("");
+            if (actvLocalidad != null) actvLocalidad.setText("");
+            if (etCodPostal != null) etCodPostal.setText("");
+            if (actvDepartamento != null) actvDepartamento.setText("");
+            if (etProvincia != null) etProvincia.setText("");
+            if (etPais != null) etPais.setText("");
+            if (etLicencia != null) etLicencia.setText("");
+            if (etClase != null) etClase.setText("");
+            if (etVencimiento != null) etVencimiento.setText("");
 
-        // ... limpiar otros campos según sea necesario
+            // Limpiar campos del vehículo
+            if (etDominio != null) etDominio.setText("");
+            if (etOtraMarca != null) etOtraMarca.setText("");
+            if (etModeloVehiculo != null) etModeloVehiculo.setText("");
+            if (etPropietario != null) etPropietario.setText("");
+
+            // Limpiar campos del hecho
+            if (etLugar != null) etLugar.setText("");
+            if (etDepartamentoMulta != null) etDepartamentoMulta.setText("Capital");
+            if (etMunicipioMulta != null) etMunicipioMulta.setText("Posadas");
+            if (etMultaInfo != null) etMultaInfo.setText("");
+
+            // Limpiar equipo de medición
+            limpiarCamposEquipoMedicion();
+
+            // Restablecer spinners
+            if (spinnerTipoDocumento != null) spinnerTipoDocumento.setSelection(0);
+            if (spinnerMarca != null) spinnerMarca.setSelection(0);
+            if (spinnerTipoVehiculo != null) spinnerTipoVehiculo.setSelection(0);
+            if (spinnerInfraccion != null) spinnerInfraccion.setSelection(0);
+            if (spinnerExpedidaPor != null) spinnerExpedidaPor.setSelection(0);
+
+            // Limpiar infracciones seleccionadas
+            infraccionesSeleccionadas.clear();
+            if (chipGroupInfracciones != null) {
+                chipGroupInfracciones.removeAllViews();
+            }
+
+            // Reset del número de acta
+            actaIdActual = null;
+            if (tvNumero != null) tvNumero.setText("");
+        });
     }
-
     private String getCurrentDate() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         return sdf.format(new Date());
@@ -1654,15 +2029,34 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Asegurémonos de que el método de limpieza también haga los campos editables
     private void limpiarCamposEquipoMedicion() {
         runOnUiThread(() -> {
             if (spinnerTipoEquipo != null) spinnerTipoEquipo.setSelection(0);
-            if (etEquipo != null) etEquipo.setText("");
-            if (etMarcaCinemometro != null) etMarcaCinemometro.setText("");
-            if (etModeloCinemometro != null) etModeloCinemometro.setText("");
-            if (etSerieCinemometro != null) etSerieCinemometro.setText("");
-            if (etCodAprobacionCinemometro != null) etCodAprobacionCinemometro.setText("");
-            if (etValorCinemometro != null) etValorCinemometro.setText("");
+            if (etEquipo != null) {
+                etEquipo.setText("");
+                etEquipo.setEnabled(true);
+            }
+            if (etMarcaCinemometro != null) {
+                etMarcaCinemometro.setText("");
+                etMarcaCinemometro.setEnabled(true);
+            }
+            if (etModeloCinemometro != null) {
+                etModeloCinemometro.setText("");
+                etModeloCinemometro.setEnabled(true);
+            }
+            if (etSerieCinemometro != null) {
+                etSerieCinemometro.setText("");
+                etSerieCinemometro.setEnabled(true);
+            }
+            if (etCodAprobacionCinemometro != null) {
+                etCodAprobacionCinemometro.setText("");
+                etCodAprobacionCinemometro.setEnabled(true);
+            }
+            if (etValorCinemometro != null) {
+                etValorCinemometro.setText("");
+                etValorCinemometro.setEnabled(true);
+            }
         });
     }
     private void cargarTiposVehiculo() {
@@ -1829,8 +2223,8 @@ public class MainActivity extends AppCompatActivity {
     }
     // Modifica el método existente para usar la nueva verificación de permisos
     private void mostrarOpcionesFoto() {
-        if (currentPhotoIndex >= 4) {
-            Toast.makeText(this, "Ya has tomado el máximo de 4 fotos", Toast.LENGTH_SHORT).show();
+        if (currentPhotoIndex >= 2) {
+            Toast.makeText(this, "Ya has tomado el máximo de 2 fotos", Toast.LENGTH_SHORT).show();
             return;
         }
 

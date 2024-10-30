@@ -20,10 +20,53 @@
         <item>Agente 2</item>
         <item>Agente 3</item>
     </string-array>
+
     <string-array name="tipos_equipo">
         <item>Seleccione un tipo</item>
+        <item>Etilómetro</item>
+        <item>Decibelímetro</item>
         <item>Cinemómetro</item>
-        <item>Alcoholímetro</item>
-        <!-- Añade más tipos de equipo según sea necesario -->
     </string-array>
+
+    <!-- Arrays para los modelos específicos de cada tipo de equipo -->
+    <string-array name="etilometros">
+        <item>SAFIR EVOLUTION - SESAH1R016002624</item>
+        <item>SAFIR EVOLUTION - SESAH1Q111001627</item>
+        <item>SAFIR EVOLUTION - SESAH1P319001342</item>
+        <item>SAFIR EVOLUTION SG - SESAH1T206003896</item>
+    </string-array>
+
+    <string-array name="decibelimetros">
+        <item>UT353 - C203115656</item>
+    </string-array>
+
+    <!-- Array para asociar los números de precinto con cada equipo -->
+    <string-array name="precintos_etilometro_1">
+        <item>B94097 (A)</item>
+        <item>B94098 (A)</item>
+        <item>B94099 (A)(Impresora)</item>
+    </string-array>
+
+    <string-array name="precintos_etilometro_2">
+        <item>R7217 (A)</item>
+        <item>R7218 (A)</item>
+        <item>R7219 (A)(Impresora)</item>
+    </string-array>
+
+    <string-array name="precintos_etilometro_3">
+        <item>R7214 (A)</item>
+        <item>R7215 (A)</item>
+        <item>R7216 (A)(Impresora)</item>
+    </string-array>
+
+    <string-array name="precintos_etilometro_4">
+        <item>B94100 (A)</item>
+        <item>B94101 (A)</item>
+        <item>B94102 (A)(Impresora)</item>
+    </string-array>
+
+    <!-- Información de calibración y características -->
+    <string name="etilometro_caracteristicas">Instrumento portátil con sensor infrarrojo</string>
+    <string name="etilometro_codigo_aprobacion">ET 10-2253</string>
+    <string name="decibelimetro_caracteristicas">Laboratorio de calibración: INTEGRAL INSTRUMENT</string>
 </resources>

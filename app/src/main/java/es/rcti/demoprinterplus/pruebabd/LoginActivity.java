@@ -23,6 +23,8 @@ public class LoginActivity extends AppCompatActivity {
     private View layoutRegister;
     private OracleApiService apiService;
 
+    private static final String TAG = "LoginActivity";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -67,8 +69,8 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void verificarUsuario() {
-        String username = editTextUsername.getText().toString();
-        String password = editTextPassword.getText().toString();
+        String username = editTextUsername.getText().toString().trim();
+        String password = editTextPassword.getText().toString().trim();
 
         if (username.isEmpty() || password.isEmpty()) {
             mostrarMensaje("Por favor ingrese el nombre de usuario y la contraseña.");
@@ -81,45 +83,57 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<RespuestaLogin> call, Response<RespuestaLogin> response) {
                 mostrarProgreso(false);
+
                 if (response.isSuccessful() && response.body() != null) {
                     RespuestaLogin resultado = response.body();
-                    if ("Usuario y contraseña correctos".equals(resultado.getMessage())) {
-                        Log.d("LoginActivity", "Login exitoso. Nombre: " + resultado.getNombre() +
-                                ", Apellido: " + resultado.getApellido() +
-                                ", Legajo: " + resultado.getLegajo());
 
-                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                        intent.putExtra("USERNAME", username);
-                        intent.putExtra("NOMBRE_INSPECTOR", resultado.getNombre());
-                        intent.putExtra("APELLIDO_INSPECTOR", resultado.getApellido());
-                        intent.putExtra("LEGAJO_INSPECTOR", resultado.getLegajo());
-                        startActivity(intent);
-                        finish();
+                    if (resultado.getError() != null && !resultado.getError().isEmpty()) {
+                        mostrarMensaje(resultado.getError());
+                        Log.e(TAG, "Error del servidor: " + resultado.getError());
+                        return;
+                    }
+
+                    if ("Usuario y contraseña correctos".equals(resultado.getMessage())) {
+                        handleLoginExitoso(username, resultado);
                     } else {
-                        mostrarMensaje("Usuario o contraseña incorrectos");
+                        mostrarMensaje(resultado.getMessage() != null ?
+                                resultado.getMessage() : "Usuario o contraseña incorrectos");
+                        Log.d(TAG, "Login fallido: " + resultado.getMessage());
                     }
                 } else {
-                    mostrarMensaje("Error en la respuesta del servidor");
-                    Log.e("LoginActivity", "Error en respuesta: " +
-                            (response.errorBody() != null ? response.errorBody().toString() : "Sin detalle"));
+                    handleErrorRespuesta(response);
                 }
             }
 
             @Override
             public void onFailure(Call<RespuestaLogin> call, Throwable t) {
-                mostrarProgreso(false);
-                mostrarMensaje("Error en la conexión: " + t.getMessage());
-                Log.e("LoginActivity", "Error de conexión", t);
+                handleErrorConexion(t);
             }
         });
     }
 
+    private void handleLoginExitoso(String username, RespuestaLogin resultado) {
+        Log.d(TAG, "Login exitoso. Nombre: " + resultado.getNombre() +
+                ", Apellido: " + resultado.getApellido() +
+                ", Legajo: " + resultado.getLegajo() +
+                ", Inspector ID: " + resultado.getInspectorId());
+
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        intent.putExtra("USERNAME", username);
+        intent.putExtra("NOMBRE_INSPECTOR", resultado.getNombre());
+        intent.putExtra("APELLIDO_INSPECTOR", resultado.getApellido());
+        intent.putExtra("LEGAJO_INSPECTOR", resultado.getLegajo());
+        intent.putExtra("INSPECTOR_ID", resultado.getInspectorId()); // Nuevo campo
+        startActivity(intent);
+        finish();
+    }
+
     private void registrarUsuario() {
-        String username = editTextNewUsername.getText().toString();
-        String password = editTextNewPassword.getText().toString();
-        String nombre = editTextNewNombre.getText().toString();
-        String apellido = editTextNewApellido.getText().toString();
-        String legajo = editTextNewLegajo.getText().toString();
+        String username = editTextNewUsername.getText().toString().trim();
+        String password = editTextNewPassword.getText().toString().trim();
+        String nombre = editTextNewNombre.getText().toString().trim();
+        String apellido = editTextNewApellido.getText().toString().trim();
+        String legajo = editTextNewLegajo.getText().toString().trim();
 
         if (username.isEmpty() || password.isEmpty() || nombre.isEmpty() ||
                 apellido.isEmpty() || legajo.isEmpty()) {
@@ -134,28 +148,62 @@ public class LoginActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(Call<RespuestaLogin> call, Response<RespuestaLogin> response) {
                         mostrarProgreso(false);
+
                         if (response.isSuccessful() && response.body() != null) {
-                            mostrarMensaje("Usuario registrado correctamente");
-                            limpiarCamposRegistro();
-                            toggleRegisterFields();
+                            RespuestaLogin resultado = response.body();
+
+                            if (resultado.getError() != null && !resultado.getError().isEmpty()) {
+                                mostrarMensaje(resultado.getError());
+                                Log.e(TAG, "Error en registro: " + resultado.getError());
+                                return;
+                            }
+
+                            if ("Usuario registrado correctamente".equals(resultado.getMessage())) {
+                                mostrarMensaje("Usuario registrado correctamente");
+                                Log.d(TAG, "Registro exitoso para: " + username + ", ID: " + resultado.getInspectorId());
+                                limpiarCamposRegistro();
+                                toggleRegisterFields();
+                            } else {
+                                mostrarMensaje(resultado.getMessage() != null ?
+                                        resultado.getMessage() : "Error en el registro");
+                                Log.d(TAG, "Registro fallido: " + resultado.getMessage());
+                            }
                         } else {
-                            mostrarMensaje("Error en el registro.");
-                            Log.e("LoginActivity", "Error en registro: " +
-                                    (response.errorBody() != null ? response.errorBody().toString() : "Sin detalle"));
+                            handleErrorRespuesta(response);
                         }
                     }
 
                     @Override
                     public void onFailure(Call<RespuestaLogin> call, Throwable t) {
-                        mostrarProgreso(false);
-                        mostrarMensaje("Error en la conexión: " + t.getMessage());
-                        Log.e("LoginActivity", "Error en registro", t);
+                        handleErrorConexion(t);
                     }
                 });
     }
 
+    private void handleErrorRespuesta(Response<RespuestaLogin> response) {
+        String errorMsg = "Error en la respuesta del servidor";
+        if (response.errorBody() != null) {
+            try {
+                errorMsg += ": " + response.errorBody().string();
+            } catch (Exception e) {
+                Log.e(TAG, "Error al leer errorBody", e);
+            }
+        }
+        mostrarMensaje(errorMsg);
+        Log.e(TAG, errorMsg);
+    }
+
+    private void handleErrorConexion(Throwable t) {
+        mostrarProgreso(false);
+        String errorMsg = "Error en la conexión: " + t.getMessage();
+        mostrarMensaje(errorMsg);
+        Log.e(TAG, "Error de conexión", t);
+    }
+
     private void mostrarMensaje(String mensaje) {
-        textViewResult.setText(mensaje);
+        if (textViewResult != null) {
+            textViewResult.setText(mensaje);
+        }
         Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show();
     }
 
@@ -168,6 +216,14 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void mostrarProgreso(boolean mostrar) {
-        progressBar.setVisibility(mostrar ? View.VISIBLE : View.GONE);
+        if (progressBar != null) {
+            progressBar.setVisibility(mostrar ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Limpiar referencias si es necesario
     }
 }

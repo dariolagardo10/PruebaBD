@@ -13,24 +13,31 @@ import retrofit2.http.Part;
 
 public interface OracleApiService {
 
-    @FormUrlEncoded
-    @POST("/oracle_api.php")
-    Call<RespuestaLogin> verificarUsuario(
+
+        @FormUrlEncoded
+        @POST("/oracle_api.php")
+        Call<RespuestaLogin> verificarUsuario(
+                @Field("accion") String accion,
+                @Field("username") String username,
+                @Field("password") String password
+        );
+
+        @FormUrlEncoded
+        @POST("/oracle_api.php")
+        Call<RespuestaLogin> registrarUsuario(
+                @Field("accion") String accion,
+                @Field("username") String username,
+                @Field("password") String password,
+                @Field("nombre") String nombre,
+                @Field("apellido") String apellido,
+                @Field("legajo") String legajo
+        );
+    @POST("Conductor_Api.php")
+    Call<RespuestaSincronizacion> sincronizarDatos(
             @Field("accion") String accion,
-            @Field("username") String username,
-            @Field("password") String password  // Añadir el campo de la contraseña
+            @Field("registros") String registrosJson
     );
 
-    @FormUrlEncoded
-    @POST("/oracle_api.php")
-    Call<RespuestaLogin> registrarUsuario(
-            @Field("accion") String accion,
-            @Field("username") String username,
-            @Field("password") String password,
-            @Field("nombre") String nombre,
-            @Field("apellido") String apellido,
-            @Field("legajo") String legajo
-    );
 
     @FormUrlEncoded
     @POST("Conductor_Api.php")
@@ -41,7 +48,7 @@ public interface OracleApiService {
             @Field("hora") String hora,
             @Field("dominio") String dominio,
             @Field("lugar") String lugar,
-            @Field("infracciones") String infracciones, // Cambiado a infracciones
+            @Field("infracciones") String infracciones,
             @Field("infractor_dni") String infractorDni,
             @Field("infractor_nombre") String infractorNombre,
             @Field("infractor_domicilio") String infractorDomicilio,
@@ -50,9 +57,15 @@ public interface OracleApiService {
             @Field("infractor_provincia") String infractorProvincia,
             @Field("infractor_pais") String infractorPais,
             @Field("infractor_licencia") String infractorLicencia,
-            @Field("tipo_vehiculo") String tipoVehiculo
+            @Field("tipo_vehiculo") String tipoVehiculo,
+            @Field("tf_inspector_id") String inspectorId,
+            @Field("marca_vehiculo") String marcaVehiculo,
+            @Field("propietario") String propietario,          // Nuevo
+            @Field("modelo_vehiculo") String modeloVehiculo,   // Nuevo
+            @Field("departamento") String departamento,        // Nuevo
+            @Field("municipio") String municipio,              // Nuevo
+            @Field("observaciones") String observaciones       // Nuevo
     );
-
     @FormUrlEncoded
     @POST("Conductor_Api.php")
     Call<RespuestaDepartamentos> obtenerDepartamentos(
