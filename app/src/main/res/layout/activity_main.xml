@@ -520,15 +520,6 @@
             android:minHeight="56dp"
             android:layout_marginBottom="16dp"/>
 
-        <Button
-            android:id="@+id/btnConectarImprimir"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Imprimir"
-            android:textColor="#FFFFFF"
-            android:background="@drawable/button_background"
-            android:minHeight="56dp"
-            android:layout_marginBottom="16dp"/>
 
         <TextView
             android:id="@+id/tvEstado"
