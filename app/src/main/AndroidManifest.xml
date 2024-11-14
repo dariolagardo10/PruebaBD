@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Permisos de ubicación -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
@@ -26,15 +27,14 @@
         android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Características de hardware -->
     <uses-feature android:name="android.hardware.camera"
         android:required="true" />
     <uses-feature android:name="android.hardware.bluetooth_le"
         android:required="false" />
-    <application
 
+    <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -43,8 +43,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MaterialComponents.Light.DarkActionBar"
-        android:usesCleartextTraffic="false"
+        android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="33">
 
         <activity

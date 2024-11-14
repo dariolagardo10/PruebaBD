@@ -2,6 +2,23 @@ package es.rcti.demoprinterplus.pruebabd;
 import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
 
 import android.Manifest;
+import javax.net.ssl.*;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.os.AsyncTask;
+import android.util.Base64;
+import android.util.Log;
+import org.json.JSONException;
+import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -12,11 +29,14 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.text.Editable;
@@ -50,11 +70,19 @@ import com.google.android.material.chip.ChipGroup;
 import com.google.gson.Gson;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -147,6 +175,7 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnBuscarLocalidad;
     private Map<String, String> infraccionIdMap = new HashMap<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -195,6 +224,7 @@ public class MainActivity extends AppCompatActivity {
             btnTomarFoto.setOnClickListener(v -> mostrarOpcionesFoto());
         }
     }
+
     private void setupAdditionalComponents() {
         // Configurar spinner de infracciones
         if (spinnerInfraccion != null) {
@@ -299,6 +329,7 @@ public class MainActivity extends AppCompatActivity {
         tvNumero = findViewById(R.id.tvNumero);
         tvEspecificaciones = findViewById(R.id.tvEspecificaciones);
     }
+
     private void setupListeners() {
         // Listeners de botones principales
         if (btnInsertarConductor != null) {
@@ -317,10 +348,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Listeners de secciones expandibles
-        if (tvConductor != null) tvConductor.setOnClickListener(v -> toggleVisibility(layoutConductor));
-        if (tvVehiculo != null) tvVehiculo.setOnClickListener(v -> toggleVisibility(layoutVehiculo));
+        if (tvConductor != null)
+            tvConductor.setOnClickListener(v -> toggleVisibility(layoutConductor));
+        if (tvVehiculo != null)
+            tvVehiculo.setOnClickListener(v -> toggleVisibility(layoutVehiculo));
         if (tvHecho != null) tvHecho.setOnClickListener(v -> toggleVisibility(layoutHecho));
-        if (tvEspecificaciones != null) tvEspecificaciones.setOnClickListener(v -> toggleVisibility(layoutEspecificaciones));
+        if (tvEspecificaciones != null)
+            tvEspecificaciones.setOnClickListener(v -> toggleVisibility(layoutEspecificaciones));
 
         // Listener para provincia y departamento
         if (etProvincia != null) {
@@ -350,6 +384,7 @@ public class MainActivity extends AppCompatActivity {
             });
         }
     }
+
     // Método para mostrar/ocultar loading
     private void showLoading(boolean show) {
         runOnUiThread(() -> {
@@ -1206,6 +1241,7 @@ public class MainActivity extends AppCompatActivity {
             mostrarMensaje("Error al enviar datos a la impresora: " + e.getMessage());
         }
     }
+
     private void printNewLine() {
         try {
             if (outputStream != null) {
@@ -1220,6 +1256,8 @@ public class MainActivity extends AppCompatActivity {
             mostrarMensaje("Error al avanzar el papel: " + e.getMessage());
         }
     }
+
+
     private void imprimirMulta() {
         Log.d("ImpresionMulta", "Iniciando impresión de multa");
         if (bluetoothSocket == null || !bluetoothSocket.isConnected()) {
@@ -1342,6 +1380,17 @@ public class MainActivity extends AppCompatActivity {
             }
             printNewLine();
 
+            String urlFirma = obtenerUrlFirma(legajoInspector);
+            Log.d("Firma", "URL de la firma: " + urlFirma);
+            verificarExistenciaFirma(urlFirma);
+            Log.d("Firma", "Datos del Inspector:");
+            Log.d("Firma", "Nombre: " + nombreInspector);
+            Log.d("Firma", "Apellido: " + apellidoInspector);
+            Log.d("Firma", "Legajo: " + legajoInspector);
+
+            Log.d("Firma", "URL de la firma: " + urlFirma);
+            verificarExistenciaFirma(urlFirma);
+            Log.d("Firma", "URL de la firma: " + urlFirma);
             Log.d("ImpresionMulta", "Imprimiendo sección datos del inspector");
             printNewLine();
             imprimirCampoEnLinea("DATOS DEL INSPECTOR", "", lineWidth);
@@ -1349,7 +1398,22 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Inspector: ", nombreInspector + " " + apellidoInspector, lineWidth);
             imprimirCampoEnLinea("Legajo: ", legajoInspector, lineWidth);
             printNewLine();
-            printNewLine();
+
+            imprimirCampoEnLinea("FIRMA DEL INSPECTOR", "", lineWidth);
+
+            // Después de imprimir los datos del inspector
+            outputStream.write(PrinterCommands.FEED_LINE);
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+            imprimirCampoEnLinea("FIRMA DEL INSPECTOR", "", lineWidth);
+            outputStream.write(PrinterCommands.FEED_LINE);
+
+// Imprimir la firma
+            Log.d("Firma", "¿OutputStream es null? " + (outputStream == null));
+            imprimirFirma(urlFirma, lineWidth);
+
+            outputStream.write(PrinterCommands.ESC_ALIGN_LEFT); // Volver a alineación izquierda
+            outputStream.write(PrinterCommands.FEED_LINE);
+
             imprimirCampoEnLinea("LA PRESENTE SERA ELEVADA PARA SU INTERVENCION A LA AUTORIDAD DE JUZGAMIENTO DEL TRIBUNAL MUNICIPAL DE FALTAS, CON DOMICILIO EN: SAN MARTIN 1555 POSADAS, DONDE PODRA OFRECER DESCARGO Y EJERCER SU DERECHO DE DEFENSA EN LOS TERMINOS DE LOS ARTS.69,70 Y 71 DE LA LEY 24.449.", "", lineWidth);
             outputStream.write(new byte[]{0x0A, 0x0A, 0x0A, 0x0A});
             outputStream.write(new byte[]{0x1D, 0x56, 0x01}); // Corte parcial
@@ -1362,6 +1426,359 @@ public class MainActivity extends AppCompatActivity {
             Log.e("ImpresionMulta", "Error al imprimir: " + e.getMessage(), e);
             mostrarMensaje("Error al imprimir: " + e.getMessage());
         }
+    }
+
+    private String obtenerUrlFirma(String legajo) {
+        return "https://systemposadas.com/test_firma.php?legajo=" + legajo;
+    }
+
+    private void imprimirFirma(String urlFirma, int lineWidth) {
+        new AsyncTask<String, String, Bitmap>() {
+            private Bitmap convertirABlancoYNegro(Bitmap original) {
+                int width = original.getWidth();
+                int height = original.getHeight();
+                Bitmap bwBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+                int threshold = 128;
+                for (int x = 0; x < width; x++) {
+                    for (int y = 0; y < height; y++) {
+                        int pixel = original.getPixel(x, y);
+                        int red = Color.red(pixel);
+                        int green = Color.green(pixel);
+                        int blue = Color.blue(pixel);
+                        int gray = (red + green + blue) / 3;
+                        int bw = gray < threshold ? Color.BLACK : Color.WHITE;
+                        bwBitmap.setPixel(x, y, bw);
+                    }
+                }
+                return bwBitmap;
+            }
+
+            @Override
+            protected void onPreExecute() {
+                try {
+                    outputStream.write("\n".getBytes()); // Solo un salto de línea
+                    outputStream.flush();
+                } catch (IOException e) {
+                    Log.e("Firma", "Error al escribir estado inicial", e);
+                }
+            }
+
+            @Override
+            protected Bitmap doInBackground(String... params) {
+                HttpURLConnection connection = null;
+                try {
+                    // Configurar TrustManager para aceptar todos los certificados
+                    TrustManager[] trustAllCerts = new TrustManager[]{
+                            new X509TrustManager() {
+                                public X509Certificate[] getAcceptedIssuers() {
+                                    return new X509Certificate[0];
+                                }
+                                public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+                                public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+                            }
+                    };
+
+                    SSLContext sc = SSLContext.getInstance("TLS");
+                    sc.init(null, trustAllCerts, new SecureRandom());
+                    HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+                    HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
+
+                    URL url = new URL(params[0]);
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setDoInput(true);
+                    connection.setConnectTimeout(30000);
+                    connection.setReadTimeout(30000);
+                    connection.setInstanceFollowRedirects(true);
+                    connection.setRequestProperty("Accept", "application/json");
+                    connection.setRequestProperty("Cache-Control", "no-cache");
+
+                    connection.connect();
+
+                    int responseCode = connection.getResponseCode();
+
+                    if (responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
+                            responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
+                            responseCode == HttpURLConnection.HTTP_SEE_OTHER) {
+
+                        String newUrl = connection.getHeaderField("Location");
+                        connection.disconnect();
+
+                        url = new URL(newUrl);
+                        connection = (HttpURLConnection) url.openConnection();
+                        connection.setRequestMethod("GET");
+                        connection.setDoInput(true);
+                        connection.setConnectTimeout(30000);
+                        connection.setReadTimeout(30000);
+                        connection.setRequestProperty("Accept", "application/json");
+
+                        responseCode = connection.getResponseCode();
+                    }
+
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+
+                        JSONObject jsonResponse = new JSONObject(response.toString());
+                        if (jsonResponse.getBoolean("success")) {
+                            String base64Data = jsonResponse.getString("firma");
+                            byte[] imageBytes = Base64.decode(base64Data, Base64.DEFAULT);
+                            return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e("Firma", "Error descargando firma", e);
+                } finally {
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
+                }
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Bitmap bitmap) {
+                try {
+                    if (bitmap != null) {
+                        // Aumentar el tamaño de la firma
+                        int newWidth = 400; // Aumentado de 200 a 400
+                        int newHeight = (bitmap.getHeight() * newWidth) / bitmap.getWidth();
+                        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
+
+                        // Convertir a B/N
+                        Bitmap bwBitmap = convertirABlancoYNegro(resizedBitmap);
+
+                        // Imprimir
+                        outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+                        byte[] command = Utils.decodeBitmap(bwBitmap);
+                        outputStream.write(command);
+                        outputStream.write(PrinterCommands.ESC_ALIGN_LEFT);
+                        outputStream.write(PrinterCommands.FEED_LINE);
+
+                        bitmap.recycle();
+                        resizedBitmap.recycle();
+                        bwBitmap.recycle();
+                    }
+                    outputStream.flush();
+                } catch (Exception e) {
+                    Log.e("Firma", "Error al procesar imagen", e);
+                }
+            }
+        }.execute(urlFirma);
+    }
+
+    private byte[] readStreamWithLog(InputStream is) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        int total = 0;
+        while ((bytesRead = is.read(buffer)) != -1) {
+            baos.write(buffer, 0, bytesRead);
+            total += bytesRead;
+            Log.d("Firma-Posnet", "Leyendo stream: " + total + " bytes");
+        }
+        return baos.toByteArray();
+    }
+    private String getStackTraceString(Exception e) {
+        if (e == null) return "No stack trace";
+
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        return sw.toString().split("\n")[0]; // Solo primera línea del stack
+    }
+    private String bytesToHex(byte[] bytes, int offset, int length) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = offset; i < offset + length && i < bytes.length; i++) {
+            sb.append(String.format("%02X ", bytes[i]));
+        }
+        return sb.toString();
+    }
+    private byte[] convertInputStreamToByteArray(InputStream is) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        int nRead;
+        byte[] data = new byte[16384];
+        while ((nRead = is.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        return buffer.toByteArray();
+    }
+
+    public class DownloadFirmaTask extends AsyncTask<String, String, Bitmap> {
+        private static final String TAG = "Firma";
+        private OutputStream outputStream;
+
+        public DownloadFirmaTask(OutputStream outputStream) {
+            this.outputStream = outputStream;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            try {
+                outputStream.write("\n=== Iniciando descarga de firma ===\n".getBytes());
+                outputStream.flush();
+            } catch (IOException e) {
+                Log.e(TAG, "Error al escribir estado inicial", e);
+            }
+        }
+
+        @Override
+        protected Bitmap doInBackground(String... params) {
+            HttpURLConnection connection = null;
+            try {
+                String urlStr = params[0];
+                publishProgress("Conectando a: " + urlStr);
+
+                URL url = new URL(urlStr);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setDoInput(true);
+                connection.setConnectTimeout(30000);
+                connection.setReadTimeout(30000);
+
+                publishProgress("Iniciando conexión...");
+                connection.connect();
+
+                int responseCode = connection.getResponseCode();
+                publishProgress("Código de respuesta: " + responseCode);
+
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    // Leer la respuesta JSON
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+
+                    JSONObject jsonResponse = new JSONObject(response.toString());
+
+                    if (jsonResponse.getBoolean("success")) {
+                        String base64Data = jsonResponse.getString("firma");
+                        publishProgress("Firma Base64 recibida, longitud: " + base64Data.length());
+
+                        // Decodificar Base64 a bytes
+                        byte[] imageBytes = Base64.decode(base64Data, Base64.DEFAULT);
+                        publishProgress("Bytes decodificados: " + imageBytes.length);
+
+                        // Convertir bytes a Bitmap
+                        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                    } else {
+                        String error = jsonResponse.optString("error", "Error desconocido");
+                        publishProgress("Error en respuesta: " + error);
+                    }
+                } else {
+                    publishProgress("Error HTTP: " + responseCode);
+                    try {
+                        InputStream errorStream = connection.getErrorStream();
+                        if (errorStream != null) {
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(errorStream));
+                            StringBuilder error = new StringBuilder();
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                error.append(line);
+                            }
+                            publishProgress("Error detallado: " + error.toString());
+                        }
+                    } catch (Exception e) {
+                        publishProgress("No se pudo leer mensaje de error");
+                    }
+                }
+            } catch (Exception e) {
+                publishProgress("Error: " + e.getMessage());
+                Log.e(TAG, "Error descargando firma", e);
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        protected void onProgressUpdate(String... values) {
+            try {
+                outputStream.write((values[0] + "\n").getBytes());
+                outputStream.flush();
+            } catch (IOException e) {
+                Log.e(TAG, "Error al escribir progreso", e);
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            try {
+                if (bitmap != null) {
+                    outputStream.write("Procesando imagen...\n".getBytes());
+
+                    // Redimensionar si es necesario
+                    int newWidth = 200;
+                    int newHeight = (bitmap.getHeight() * newWidth) / bitmap.getWidth();
+                    Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
+
+                    // Convertir a B/N
+                    Bitmap bwBitmap = convertirABlancoYNegro(resizedBitmap);
+
+                    // Imprimir
+                    outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+                    byte[] command = Utils.decodeBitmap(bwBitmap);
+                    outputStream.write(command);
+                    outputStream.write(PrinterCommands.ESC_ALIGN_LEFT);
+                    outputStream.write(PrinterCommands.FEED_LINE);
+
+                    bitmap.recycle();
+                    resizedBitmap.recycle();
+                    bwBitmap.recycle();
+
+                    outputStream.write("Firma impresa exitosamente\n".getBytes());
+                } else {
+                    outputStream.write("Error: No se pudo procesar la imagen\n".getBytes());
+                }
+                outputStream.flush();
+            } catch (Exception e) {
+                Log.e(TAG, "Error al procesar imagen", e);
+                try {
+                    outputStream.write(("Error final: " + e.getMessage() + "\n").getBytes());
+                    outputStream.flush();
+                } catch (IOException ioe) {
+                    Log.e(TAG, "Error al escribir error final", ioe);
+                }
+            }
+        }
+
+        private Bitmap convertirABlancoYNegro(Bitmap original) {
+            int width = original.getWidth();
+            int height = original.getHeight();
+            Bitmap bwBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+            int threshold = 128;
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    int pixel = original.getPixel(x, y);
+                    int gray = (Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)) / 3;
+                    int bw = gray < threshold ? Color.BLACK : Color.WHITE;
+                    bwBitmap.setPixel(x, y, bw);
+                }
+            }
+            return bwBitmap;
+        }
+    }
+    private void verificarDatosFirma() {
+        String urlFirma = obtenerUrlFirma(legajoInspector);
+        Log.d("Firma", "=== Verificación de Firma ===");
+        Log.d("Firma", "Datos del Inspector:");
+        Log.d("Firma", "Nombre: " + nombreInspector);
+        Log.d("Firma", "Apellido: " + apellidoInspector);
+        Log.d("Firma", "Legajo: " + legajoInspector);
+        Log.d("Firma", "URL de la firma: " + urlFirma);
+        verificarExistenciaFirma(urlFirma);
     }
     private void setupEquipoMedicionSpinner() {
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
@@ -1383,7 +1800,25 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
+    private void verificarExistenciaFirma(String urlFirma) {
+        new Thread(() -> {
+            try {
+                URL url = new URL(urlFirma);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("HEAD");
+                int responseCode = connection.getResponseCode();
+                Log.d("Firma", "Verificación de firma - URL: " + urlFirma);
+                Log.d("Firma", "Código de respuesta: " + responseCode);
+                if (responseCode == 200) {
+                    Log.d("Firma", "La imagen de la firma existe");
+                } else {
+                    Log.d("Firma", "La imagen de la firma NO existe");
+                }
+            } catch (Exception e) {
+                Log.e("Firma", "Error al verificar firma: " + e.getMessage());
+            }
+        }).start();
+    }
     private void autocompletarEquipoMedicion(String tipoEquipo) {
         Log.d("EquipoMedicion", "Autocompleting para: " + tipoEquipo);
         runOnUiThread(() -> {
@@ -1784,6 +2219,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+
     // Nuevo método para finalizar el proceso e imprimir
     // Método modificado para controlar el flujo de impresión
     private void finalizarProcesoEImprimir(boolean exito) {
@@ -1794,14 +2231,14 @@ public class MainActivity extends AppCompatActivity {
             }
             if (exito) {
                 mostrarMensaje("Datos guardados exitosamente");
-                // Llamar directamente a imprimirMulta
+                // Verificar firma antes de intentar imprimir
+                verificarDatosFirma();
+                // Intenta imprimir solo si hay conexión Bluetooth
                 if (verificarBluetoothYConectar()) {
                     imprimirMulta();
-                    // Solo limpiamos después de una impresión exitosa
                     limpiarCampos();
                 }
             } else {
-                // En caso de error, no limpiamos los campos para permitir reintentar
                 mostrarError("Ocurrió un error al guardar los datos. Puede intentar nuevamente.");
             }
         });
