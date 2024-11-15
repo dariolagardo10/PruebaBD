@@ -15,6 +15,7 @@ public class PrinterCommands {
     public static final byte EOT = 0x04;
 
     public static final byte[] INIT = {27, 64};
+    public static final int ESC_INIT = 0x1B ;
     public static byte[] FEED_LINE = {10};
 
     public static byte[] SELECT_FONT_A = {20, 33, 0};

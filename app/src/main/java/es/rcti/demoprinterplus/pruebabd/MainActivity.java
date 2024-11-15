@@ -3,10 +3,13 @@ import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
 
 import android.Manifest;
 import javax.net.ssl.*;
+
+import android.app.ProgressDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.AsyncTask;
+import android.os.Handler;
 import android.util.Base64;
 import android.util.Log;
 import org.json.JSONException;
@@ -110,6 +113,8 @@ public class MainActivity extends AppCompatActivity {
 
 
     // Declaración de vistas
+    private boolean firmaEstaCargada = false;
+    private ProgressDialog loadingDialog;
     private static final int REQUEST_GALLERY_PERMISSION = 201;
 
     private LinearLayout photoPreviewContainer;
@@ -175,11 +180,13 @@ public class MainActivity extends AppCompatActivity {
 
     private Button btnBuscarLocalidad;
     private Map<String, String> infraccionIdMap = new HashMap<>();
+    private Bitmap firmaProcesada = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        precargarFirma();
 
         // Configurar el manejador de excepciones no capturadas
         Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
@@ -213,6 +220,122 @@ public class MainActivity extends AppCompatActivity {
         // Configurar componentes adicionales
         setupAdditionalComponents();
     }
+
+    private byte[] comandoFirma = null; // Agregar esta variable en la clase
+
+
+    private void precargarFirma() {
+        if (firmaEstaCargada) {
+            return;
+        }
+
+        loadingDialog = new ProgressDialog(this);
+        loadingDialog.setMessage("Cargando firma...");
+        loadingDialog.setCancelable(false);
+        loadingDialog.show();
+
+        new AsyncTask<Void, Void, byte[]>() {
+            // Método interno para convertir a blanco y negro
+            private Bitmap convertirABlancoYNegro(Bitmap original) {
+                int width = original.getWidth();
+                int height = original.getHeight();
+                Bitmap bwBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+                int threshold = 128;
+                for (int x = 0; x < width; x++) {
+                    for (int y = 0; y < height; y++) {
+                        int pixel = original.getPixel(x, y);
+                        int red = Color.red(pixel);
+                        int green = Color.green(pixel);
+                        int blue = Color.blue(pixel);
+                        int gray = (red + green + blue) / 3;
+                        int bw = gray < threshold ? Color.BLACK : Color.WHITE;
+                        bwBitmap.setPixel(x, y, bw);
+                    }
+                }
+                return bwBitmap;
+            }
+
+            @Override
+            protected byte[] doInBackground(Void... params) {
+                try {
+                    String urlFirma = obtenerUrlFirma(legajoInspector);
+                    URL url = new URL(urlFirma);
+
+                    // Configuración del SSL
+                    TrustManager[] trustAllCerts = new TrustManager[]{
+                            new X509TrustManager() {
+                                public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+                                public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+                                public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+                            }
+                    };
+
+                    SSLContext sc = SSLContext.getInstance("TLS");
+                    sc.init(null, trustAllCerts, new SecureRandom());
+                    HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+                    HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
+
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setDoInput(true);
+                    connection.setConnectTimeout(30000);
+                    connection.setReadTimeout(30000);
+                    connection.setRequestProperty("Accept", "application/json");
+
+                    int responseCode = connection.getResponseCode();
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+
+                        JSONObject jsonResponse = new JSONObject(response.toString());
+                        if (jsonResponse.getBoolean("success")) {
+                            String base64Data = jsonResponse.getString("firma");
+                            byte[] imageBytes = Base64.decode(base64Data, Base64.DEFAULT);
+                            Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+
+                            if (bitmap != null) {
+                                int newWidth = 400;
+                                int newHeight = (bitmap.getHeight() * newWidth) / bitmap.getWidth();
+                                Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
+                                Bitmap bwBitmap = convertirABlancoYNegro(resizedBitmap);
+                                firmaProcesada = bwBitmap;
+
+                                // Liberar memoria
+                                bitmap.recycle();
+                                resizedBitmap.recycle();
+
+                                return Utils.decodeBitmap(bwBitmap);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e("Firma", "Error precargando firma", e);
+                }
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(byte[] command) {
+                if (command != null) {
+                    comandoFirma = command;
+                    firmaEstaCargada = true;
+                    Log.d("Firma", "Firma precargada exitosamente");
+                } else {
+                    Log.e("Firma", "No se pudo precargar la firma");
+                }
+                if (loadingDialog != null && loadingDialog.isShowing()) {
+                    loadingDialog.dismiss();
+                }
+            }
+        }.execute();
+    }
+
+
 
     private void initializePhotoComponents() {
         photoPreviewContainer = findViewById(R.id.photoPreviewContainer);
@@ -1399,7 +1522,7 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Legajo: ", legajoInspector, lineWidth);
             printNewLine();
 
-            imprimirCampoEnLinea("FIRMA DEL INSPECTOR", "", lineWidth);
+
 
             // Después de imprimir los datos del inspector
             outputStream.write(PrinterCommands.FEED_LINE);
@@ -1432,14 +1555,60 @@ public class MainActivity extends AppCompatActivity {
         return "https://systemposadas.com/test_firma.php?legajo=" + legajo;
     }
 
+
     private void imprimirFirma(String urlFirma, int lineWidth) {
+        // Primero intentar usar el comando precargado
+        if (comandoFirma != null) {
+
+
+            try {
+                if (comandoFirma != null) {
+                    outputStream.write(PrinterCommands.ESC_INIT);
+                    outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+                    outputStream.write(comandoFirma);
+                    outputStream.write(PrinterCommands.ESC_ALIGN_LEFT);
+                    outputStream.write(PrinterCommands.FEED_LINE);
+                    outputStream.flush();
+                    Log.d("Firma", "Firma impresa usando comando precargado");
+                    return;
+                }
+            } catch (Exception e) {
+                Log.e("Firma", "Error usando comando precargado", e);
+            }
+        }
+
+        // Si no hay comando precargado pero hay firma procesada
+        if (firmaProcesada != null) {
+            try {
+                outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+                byte[] command = Utils.decodeBitmap(firmaProcesada);
+                outputStream.write(command);
+                outputStream.write(PrinterCommands.ESC_ALIGN_LEFT);
+                outputStream.write(PrinterCommands.FEED_LINE);
+                outputStream.flush();
+
+                // Guardar el comando para futuras impresiones
+                comandoFirma = command;
+                Log.d("Firma", "Firma impresa usando bitmap precargado");
+                return;
+            } catch (Exception e) {
+                Log.e("Firma", "Error usando firma precargada", e);
+            }
+        }
+        // Método original como fallback
         new AsyncTask<String, String, Bitmap>() {
             private Bitmap convertirABlancoYNegro(Bitmap original) {
                 int width = original.getWidth();
                 int height = original.getHeight();
                 Bitmap bwBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 
-                int threshold = 128;
+                // Aumentar el umbral para hacer la imagen más limpia
+                int threshold = 160; // Aumentado de 128 a 160 para ser más estricto
+
+                // Matriz para ayudar a eliminar ruido
+                int[][] pixels = new int[width][height];
+
+                // Primera pasada - obtener valores
                 for (int x = 0; x < width; x++) {
                     for (int y = 0; y < height; y++) {
                         int pixel = original.getPixel(x, y);
@@ -1447,17 +1616,37 @@ public class MainActivity extends AppCompatActivity {
                         int green = Color.green(pixel);
                         int blue = Color.blue(pixel);
                         int gray = (red + green + blue) / 3;
-                        int bw = gray < threshold ? Color.BLACK : Color.WHITE;
-                        bwBitmap.setPixel(x, y, bw);
+                        pixels[x][y] = gray;
                     }
                 }
+
+                // Segunda pasada - aplicar umbral y eliminar ruido
+                for (int x = 0; x < width; x++) {
+                    for (int y = 0; y < height; y++) {
+                        // Verificar píxeles vecinos para eliminar ruido
+                        if (x > 0 && x < width-1 && y > 0 && y < height-1) {
+                            int count = 0;
+                            for (int i = -1; i <= 1; i++) {
+                                for (int j = -1; j <= 1; j++) {
+                                    if (pixels[x+i][y+j] < threshold) count++;
+                                }
+                            }
+                            // Si la mayoría de los vecinos son negros, este pixel será negro
+                            bwBitmap.setPixel(x, y, (count > 4) ? Color.BLACK : Color.WHITE);
+                        } else {
+                            // Para bordes, usar umbral simple
+                            bwBitmap.setPixel(x, y, pixels[x][y] < threshold ? Color.BLACK : Color.WHITE);
+                        }
+                    }
+                }
+
                 return bwBitmap;
             }
 
             @Override
             protected void onPreExecute() {
                 try {
-                    outputStream.write("\n".getBytes()); // Solo un salto de línea
+                    outputStream.write("\n".getBytes());
                     outputStream.flush();
                 } catch (IOException e) {
                     Log.e("Firma", "Error al escribir estado inicial", e);
@@ -1468,7 +1657,6 @@ public class MainActivity extends AppCompatActivity {
             protected Bitmap doInBackground(String... params) {
                 HttpURLConnection connection = null;
                 try {
-                    // Configurar TrustManager para aceptar todos los certificados
                     TrustManager[] trustAllCerts = new TrustManager[]{
                             new X509TrustManager() {
                                 public X509Certificate[] getAcceptedIssuers() {
@@ -1495,26 +1683,7 @@ public class MainActivity extends AppCompatActivity {
                     connection.setRequestProperty("Cache-Control", "no-cache");
 
                     connection.connect();
-
                     int responseCode = connection.getResponseCode();
-
-                    if (responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
-                            responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
-                            responseCode == HttpURLConnection.HTTP_SEE_OTHER) {
-
-                        String newUrl = connection.getHeaderField("Location");
-                        connection.disconnect();
-
-                        url = new URL(newUrl);
-                        connection = (HttpURLConnection) url.openConnection();
-                        connection.setRequestMethod("GET");
-                        connection.setDoInput(true);
-                        connection.setConnectTimeout(30000);
-                        connection.setReadTimeout(30000);
-                        connection.setRequestProperty("Accept", "application/json");
-
-                        responseCode = connection.getResponseCode();
-                    }
 
                     if (responseCode == HttpURLConnection.HTTP_OK) {
                         BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
@@ -1547,31 +1716,41 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     if (bitmap != null) {
                         // Aumentar el tamaño de la firma
-                        int newWidth = 400; // Aumentado de 200 a 400
+                        int newWidth = 400;
                         int newHeight = (bitmap.getHeight() * newWidth) / bitmap.getWidth();
                         Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
 
                         // Convertir a B/N
                         Bitmap bwBitmap = convertirABlancoYNegro(resizedBitmap);
 
+                        // Generar comando de impresión
+                        byte[] command = Utils.decodeBitmap(bwBitmap);
+
                         // Imprimir
                         outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
-                        byte[] command = Utils.decodeBitmap(bwBitmap);
                         outputStream.write(command);
                         outputStream.write(PrinterCommands.ESC_ALIGN_LEFT);
                         outputStream.write(PrinterCommands.FEED_LINE);
 
+                        // Almacenar para uso futuro
+                        firmaProcesada = bwBitmap;
+                        comandoFirma = command;
+
                         bitmap.recycle();
                         resizedBitmap.recycle();
-                        bwBitmap.recycle();
+
+                        Log.d("Firma", "Firma impresa y almacenada desde fallback");
+                    } else {
+                        Log.e("Firma", "Error: bitmap nulo en fallback");
                     }
                     outputStream.flush();
                 } catch (Exception e) {
-                    Log.e("Firma", "Error al procesar imagen", e);
+                    Log.e("Firma", "Error al procesar imagen en fallback", e);
                 }
             }
         }.execute(urlFirma);
     }
+
 
     private byte[] readStreamWithLog(InputStream is) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -2220,9 +2399,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
-    // Nuevo método para finalizar el proceso e imprimir
-    // Método modificado para controlar el flujo de impresión
+    // Modifica el método finalizarProcesoEImprimir
     private void finalizarProcesoEImprimir(boolean exito) {
         runOnUiThread(() -> {
             if (loadingOverlay != null) {
@@ -2231,12 +2408,42 @@ public class MainActivity extends AppCompatActivity {
             }
             if (exito) {
                 mostrarMensaje("Datos guardados exitosamente");
-                // Verificar firma antes de intentar imprimir
-                verificarDatosFirma();
-                // Intenta imprimir solo si hay conexión Bluetooth
-                if (verificarBluetoothYConectar()) {
-                    imprimirMulta();
-                    limpiarCampos();
+
+                // Verificar si la firma está cargada antes de imprimir
+                if (!firmaEstaCargada) {
+                    // Mostrar diálogo de carga
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Cargando firma");
+                    builder.setMessage("Por favor espere mientras se carga la firma...");
+                    builder.setCancelable(false);
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
+
+                    // Intentar cargar la firma
+                    precargarFirma();
+
+                    // Verificar periódicamente si la firma está lista
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (firmaEstaCargada) {
+                                dialog.dismiss();
+                                if (verificarBluetoothYConectar()) {
+                                    imprimirMulta();
+                                    limpiarCampos();
+                                }
+                            } else {
+                                // Intentar nuevamente en 500ms
+                                new Handler().postDelayed(this, 500);
+                            }
+                        }
+                    }, 500);
+                } else {
+                    // La firma ya está cargada, imprimir directamente
+                    if (verificarBluetoothYConectar()) {
+                        imprimirMulta();
+                        limpiarCampos();
+                    }
                 }
             } else {
                 mostrarError("Ocurrió un error al guardar los datos. Puede intentar nuevamente.");
@@ -2686,6 +2893,10 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+        if (loadingDialog != null) {
+            loadingDialog.dismiss();
+            loadingDialog = null;
         }
     }
     @Override
