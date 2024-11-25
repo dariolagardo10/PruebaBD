@@ -8,6 +8,7 @@ import android.app.ProgressDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.util.Base64;
@@ -53,6 +54,7 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -115,8 +117,10 @@ public class MainActivity extends AppCompatActivity {
     // Declaración de vistas
     private boolean firmaEstaCargada = false;
     private ProgressDialog loadingDialog;
+    private EditText spinnerExpedidaPor;
     private static final int REQUEST_GALLERY_PERMISSION = 201;
-
+    private List<String> todasLasInfracciones = new ArrayList<>();
+    private List<String> infraccionesDisponibles = new ArrayList<>();
     private LinearLayout photoPreviewContainer;
     private static final int MAX_PHOTOS = 2;
     private ImageView[] photoPreviewViews = new ImageView[2];
@@ -132,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
     private String actaIdActual;
 
     private String currentPhotoPath;
-
+    private ImageButton[] closeButtons = new ImageButton[2];
 
     private EditText etClase;
     private EditText etVencimiento;
@@ -146,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
             etProvincia, etPais, etLicencia, etMultaInfo,
             etNumeroDocumento, etDominio, etOtraMarca, etModeloVehiculo, etPropietario,
             etLugar, etDepartamentoMulta, etMunicipioMulta;
-    private Spinner spinnerTipoDocumento, spinnerMarca, spinnerTipoVehiculo, spinnerInfraccion, spinnerExpedidaPor;
+    private Spinner spinnerTipoDocumento, spinnerMarca, spinnerTipoVehiculo, spinnerInfraccion;
     private Button btnTomarFoto, btnConectarImprimir, btnInsertarConductor;
     private AutoCompleteTextView actvDepartamento, actvLocalidad;
     private static final int REQUEST_CAMERA_PERMISSION = 200;
@@ -336,16 +340,45 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     private void initializePhotoComponents() {
         photoPreviewContainer = findViewById(R.id.photoPreviewContainer);
         for (int i = 0; i < 2; i++) {
             photoPreviewViews[i] = findViewById(getResources().getIdentifier("ivPhotoPreview" + (i + 1), "id", getPackageName()));
+            closeButtons[i] = findViewById(getResources().getIdentifier("btnClosePhoto" + (i + 1), "id", getPackageName()));
+
+            final int index = i;
+            closeButtons[i].setOnClickListener(v -> removePhoto(index));
         }
 
         if (btnTomarFoto != null) {
             btnTomarFoto.setOnClickListener(v -> mostrarOpcionesFoto());
         }
+    }
+
+    private void removePhoto(int index) {
+        // Mover las fotos restantes
+        for (int i = index; i < currentPhotoIndex - 1; i++) {
+            photoPreviewViews[i].setImageBitmap(
+                    ((BitmapDrawable) photoPreviewViews[i + 1].getDrawable()).getBitmap()
+            );
+            imagenBase64List.set(i, imagenBase64List.get(i + 1));
+            currentPhotoPaths[i] = currentPhotoPaths[i + 1];
+        }
+
+        // Limpiar la última posición
+        currentPhotoIndex--;
+        if (currentPhotoIndex >= 0) {
+            photoPreviewViews[currentPhotoIndex].setImageBitmap(null);
+            photoPreviewViews[currentPhotoIndex].setVisibility(View.GONE);
+            closeButtons[currentPhotoIndex].setVisibility(View.GONE);
+
+            if (currentPhotoIndex < imagenBase64List.size()) {
+                imagenBase64List.remove(currentPhotoIndex);
+            }
+            currentPhotoPaths[currentPhotoIndex] = null;
+        }
+
+        actualizarBotonTomarFoto();
     }
 
     private void setupAdditionalComponents() {
@@ -537,22 +570,38 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void agregarInfraccion(String infraccionDescripcion) {
-        if (!infraccionesSeleccionadas.contains(infraccionDescripcion)) {
+        if (!infraccionesSeleccionadas.contains(infraccionDescripcion) &&
+                !infraccionDescripcion.equals("Seleccione una infracción")) {
+
             String infraccionId = infraccionIdMap.get(infraccionDescripcion);
             if (infraccionId != null) {
                 infraccionesSeleccionadas.add(infraccionDescripcion);
                 Log.d("DEBUG", "Infracción agregada: " + infraccionDescripcion + " con ID: " + infraccionId);
 
+                // Crear y configurar el chip
                 Chip chip = new Chip(this);
                 chip.setText(infraccionDescripcion);
                 chip.setCloseIconVisible(true);
-                chip.setTag(infraccionId); // Guardamos el ID en el tag del Chip
+                chip.setTag(infraccionId);
+
+                // Modificar el listener del chip para actualizar el spinner cuando se remueve
                 chip.setOnCloseIconClickListener(v -> {
                     chipGroupInfracciones.removeView(chip);
                     infraccionesSeleccionadas.remove(infraccionDescripcion);
+                    // Volver a agregar la infracción a las disponibles
+                    infraccionesDisponibles.add(infraccionDescripcion);
+                    actualizarAdapterInfracciones();
                     Log.d("DEBUG", "Infracción removida: " + infraccionDescripcion + " con ID: " + infraccionId);
                 });
+
                 chipGroupInfracciones.addView(chip);
+
+                // Remover la infracción seleccionada de las disponibles
+                infraccionesDisponibles.remove(infraccionDescripcion);
+                actualizarAdapterInfracciones();
+
+                // Resetear el spinner a la primera posición
+                spinnerInfraccion.setSelection(0);
             } else {
                 Log.e("DEBUG", "No se encontró ID para la infracción: " + infraccionDescripcion);
             }
@@ -904,33 +953,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void actualizarSpinnerInfracciones(List<RespuestaInfracciones.Infraccion> infracciones) {
-        List<String> descripcionesInfracciones = new ArrayList<>();
-        descripcionesInfracciones.add("Seleccione una infracción");
+        // Limpiar y reinicializar las listas
+        todasLasInfracciones.clear();
+        infraccionesDisponibles.clear();
         infraccionIdMap.clear();
+
+        // Agregar el item por defecto
+        infraccionesDisponibles.add("Seleccione una infracción");
+
+        // Poblar las listas y el map
         for (RespuestaInfracciones.Infraccion infraccion : infracciones) {
-            descripcionesInfracciones.add(infraccion.getDescripcion());
-            infraccionIdMap.put(infraccion.getDescripcion(), infraccion.getId());
+            String descripcion = infraccion.getDescripcion();
+            todasLasInfracciones.add(descripcion);
+            infraccionesDisponibles.add(descripcion);
+            infraccionIdMap.put(descripcion, infraccion.getId());
         }
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, descripcionesInfracciones);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerInfraccion.setAdapter(adapter);
 
-        // Limpiar infracciones seleccionadas y chips
-        //infraccionesSeleccionadas.clear();
-        // chipGroupInfracciones.removeAllViews();
+        actualizarAdapterInfracciones();
 
-        Log.d("DEBUG", "Infracciones cargadas: " + descripcionesInfracciones);
+        Log.d("DEBUG", "Infracciones cargadas: " + infraccionesDisponibles);
     }
 
+    private void actualizarAdapterInfracciones() {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item,
+                infraccionesDisponibles);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerInfraccion.setAdapter(adapter);
+    }
 
     private void setupExpedidoPorSpinner() {
-        List<String> expedidores = new ArrayList<>();
-        expedidores.add("Seleccione un expedidor");
-        expedidores.add("Posadas");
-        expedidores.add("Otras ciudades..."); // Añade más ciudades según sea necesario
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, expedidores);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerExpedidaPor.setAdapter(adapter);
+        if (spinnerExpedidaPor != null) {
+            spinnerExpedidaPor.setText("Posadas");
+        }
     }
 
     private void toggleVisibility(View view) {
@@ -1114,13 +1169,13 @@ public class MainActivity extends AppCompatActivity {
             mostrarError("No se pudo capturar o seleccionar la imagen");
         }
     }
-
     private void procesarImagen(File imagenFile) {
         try {
             Bitmap bitmap = BitmapFactory.decodeFile(imagenFile.getAbsolutePath());
             if (bitmap != null) {
                 photoPreviewViews[currentPhotoIndex].setImageBitmap(bitmap);
                 photoPreviewViews[currentPhotoIndex].setVisibility(View.VISIBLE);
+                closeButtons[currentPhotoIndex].setVisibility(View.VISIBLE);
 
                 String base64Image = convertirImagenABase64(imagenFile);
                 imagenBase64List.add(base64Image);
@@ -1143,6 +1198,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             photoPreviewViews[currentPhotoIndex].setImageBitmap(bitmap);
             photoPreviewViews[currentPhotoIndex].setVisibility(View.VISIBLE);
+            closeButtons[currentPhotoIndex].setVisibility(View.VISIBLE);
 
             String base64Image = convertirBitmapABase64(bitmap);
             imagenBase64List.add(base64Image);
@@ -1436,7 +1492,7 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Provincia: ", etProvincia.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Pais: ", etPais.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Licencia: ", etLicencia.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Expedida por: ", spinnerExpedidaPor.getSelectedItem().toString(), lineWidth);
+            imprimirCampoEnLinea("Expedida por: ", spinnerExpedidaPor.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Clase: ", etClase.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Vencimiento: ", etVencimiento.getText().toString(), lineWidth);
             printNewLine();
@@ -2589,6 +2645,7 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, error, Toast.LENGTH_LONG).show();
         Log.e("DEBUG", error);
     }
+
     private void limpiarCampos() {
         runOnUiThread(() -> {
             // Limpiar imágenes
@@ -2596,6 +2653,10 @@ public class MainActivity extends AppCompatActivity {
             for (ImageView view : photoPreviewViews) {
                 view.setImageBitmap(null);
                 view.setVisibility(View.GONE);
+            }
+            // Limpiar botones de cierre de fotos
+            for (ImageButton button : closeButtons) {
+                button.setVisibility(View.GONE);
             }
             currentPhotoIndex = 0;
             actualizarBotonTomarFoto();
@@ -2633,17 +2694,35 @@ public class MainActivity extends AppCompatActivity {
             if (spinnerMarca != null) spinnerMarca.setSelection(0);
             if (spinnerTipoVehiculo != null) spinnerTipoVehiculo.setSelection(0);
             if (spinnerInfraccion != null) spinnerInfraccion.setSelection(0);
-            if (spinnerExpedidaPor != null) spinnerExpedidaPor.setSelection(0);
+            if (spinnerExpedidaPor != null) spinnerExpedidaPor.setText("Posadas");
 
-            // Limpiar infracciones seleccionadas
+            // Limpiar y restaurar infracciones
             infraccionesSeleccionadas.clear();
             if (chipGroupInfracciones != null) {
                 chipGroupInfracciones.removeAllViews();
             }
 
+            // Restaurar todas las infracciones disponibles
+            infraccionesDisponibles.clear();
+            infraccionesDisponibles.add("Seleccione una infracción");
+            infraccionesDisponibles.addAll(todasLasInfracciones);
+            actualizarAdapterInfracciones();
+            if (spinnerInfraccion != null) {
+                spinnerInfraccion.setSelection(0);
+            }
+
+            // Limpiar rutas de fotos
+            currentPhotoPaths = new String[2];
+
             // Reset del número de acta
             actaIdActual = null;
             if (tvNumero != null) tvNumero.setText("");
+
+            // Notificar al usuario
+            Log.d("DEBUG", "Formulario limpiado y infracciones restauradas");
+            Toast.makeText(MainActivity.this,
+                    "Formulario limpiado correctamente",
+                    Toast.LENGTH_SHORT).show();
         });
     }
     private String getCurrentDate() {

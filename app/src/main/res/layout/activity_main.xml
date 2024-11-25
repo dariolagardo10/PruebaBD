@@ -198,12 +198,16 @@
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
-            <Spinner
+            <EditText
                 android:id="@+id/spinnerExpedidaPor"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:hint="Expedida por"
+                android:text="Posadas"
+                android:inputType="text"
                 android:minHeight="48dp"
-                android:background="@drawable/spinner_background"
+                android:padding="12dp"
+                android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
 
@@ -537,37 +541,49 @@
             android:orientation="horizontal"
             android:layout_marginBottom="16dp">
 
-            <ImageView
-                android:id="@+id/ivPhotoPreview1"
+            <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="100dp"
-                android:layout_weight="1"
-                android:scaleType="centerCrop"
-                android:visibility="gone"/>
+                android:layout_weight="1">
 
-            <ImageView
-                android:id="@+id/ivPhotoPreview2"
-                android:layout_width="0dp"
-                android:layout_height="100dp"
-                android:layout_weight="1"
-                android:scaleType="centerCrop"
-                android:visibility="gone"/>
+                <ImageView
+                    android:id="@+id/ivPhotoPreview1"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone"/>
 
-            <ImageView
-                android:id="@+id/ivPhotoPreview3"
-                android:layout_width="0dp"
-                android:layout_height="100dp"
-                android:layout_weight="1"
-                android:scaleType="centerCrop"
-                android:visibility="gone"/>
+                <ImageButton
+                    android:id="@+id/btnClosePhoto1"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="4dp"
+                    android:background="@android:drawable/ic_menu_close_clear_cancel"
+                    android:visibility="gone"/>
+            </FrameLayout>
 
-            <ImageView
-                android:id="@+id/ivPhotoPreview4"
+            <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="100dp"
-                android:layout_weight="1"
-                android:scaleType="centerCrop"
-                android:visibility="gone"/>
+                android:layout_weight="1">
+
+                <ImageView
+                    android:id="@+id/ivPhotoPreview2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone"/>
+
+                <ImageButton
+                    android:id="@+id/btnClosePhoto2"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="4dp"
+                    android:background="@android:drawable/ic_menu_close_clear_cancel"
+                    android:visibility="gone"/>
+            </FrameLayout>
         </LinearLayout>
         <Button
             android:id="@+id/btnConfirmPhotos"
