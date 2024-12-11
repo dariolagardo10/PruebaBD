@@ -1,0 +1,13 @@
+<resources>
+    <!-- Tema principal de la aplicación -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Puedes definir estilos globales aquí -->
+    </style>
+
+    <!-- Estilo personalizado para botones -->
+    <style name="CustomButton" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/button_green</item>
+
+        <item name="cornerRadius">8dp</item>
+    </style>
+</resources>

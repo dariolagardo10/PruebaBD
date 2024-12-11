@@ -32,13 +32,28 @@ public interface OracleApiService {
                 @Field("apellido") String apellido,
                 @Field("legajo") String legajo
         );
+
+
+
     @POST("Conductor_Api.php")
     Call<RespuestaSincronizacion> sincronizarDatos(
             @Field("accion") String accion,
             @Field("registros") String registrosJson
     );
 
+    @FormUrlEncoded
+    @POST("Conductor_Api.php")
+    Call<RespuestaBuscarConductor> buscarConductorPorDNI(
+            @Field("accion") String accion,
+            @Field("dni") String dni
+    );
 
+    @FormUrlEncoded
+    @POST("Conductor_Api.php")
+    Call<RespuestaVehiculo> buscarVehiculo(
+            @Field("accion") String accion,  // Cambiar "action" por "accion"
+            @Field("dominio") String dominio
+    );
     @FormUrlEncoded
     @POST("Conductor_Api.php")
     Call<RespuestaInsertarConductor> insertarConductor(

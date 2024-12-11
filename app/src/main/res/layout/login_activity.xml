@@ -3,59 +3,82 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
+    android:background="#F5F5F5"
     android:id="@+id/scrollView">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="24dp">
 
+        <!-- Header con título -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Iniciar sesión / Registrarse"
-            android:textSize="20sp"
+            android:textSize="24sp"
             android:textStyle="bold"
+            android:textColor="#1B5E20"
             android:gravity="center"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginBottom="32dp"/>
 
-        <EditText
-            android:id="@+id/editTextUsername"
+        <!-- Campos de login -->
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Nombre de Usuario"
-            android:inputType="text"
-            android:minHeight="48dp"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="16dp">
 
-        <EditText
-            android:id="@+id/editTextPassword"
+            <EditText
+                android:id="@+id/editTextUsername"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Nombre de Usuario"
+                android:inputType="text"
+                android:background="@drawable/edit_text_background"
+                android:padding="16dp"
+                android:textColor="#2E2E2E"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Contraseña"
-            android:inputType="textPassword"
-            android:minHeight="48dp"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="24dp">
 
+            <EditText
+                android:id="@+id/editTextPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Contraseña"
+                android:inputType="textPassword"
+                android:background="@drawable/edit_text_background"
+                android:padding="16dp"
+                android:textColor="#2E2E2E"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Botones principales -->
+        <!-- Botón de Iniciar Sesión -->
         <Button
             android:id="@+id/buttonLogin"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Iniciar sesión"
-            android:minHeight="48dp"
-            android:layout_marginBottom="24dp" />
+            android:text="INICIAR SESIÓN"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#26A69A"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp"/>
 
+        <!-- Botón de Registrarse -->
         <Button
             android:id="@+id/buttonShowRegister"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Registrarse"
-            android:minHeight="48dp"
-            android:layout_marginBottom="16dp" />
-
+            android:text="REGISTRARSE"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#26A69A"
+            android:padding="12dp"
+            android:layout_marginBottom="24dp"/>
+        <!-- Sección de registro -->
         <LinearLayout
             android:id="@+id/layoutRegister"
             android:layout_width="match_parent"
@@ -63,51 +86,72 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <EditText
-                android:id="@+id/editTextNewNombre"
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Nombre"
-                android:inputType="text"
-                android:minHeight="48dp"
-                android:padding="16dp"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="16dp">
 
-            <EditText
-                android:id="@+id/editTextNewApellido"
+                <EditText
+                    android:id="@+id/editTextNewNombre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Nombre"
+                    android:inputType="text"
+                    android:background="@drawable/edit_text_background"
+                    android:padding="16dp"
+                    android:textColor="#2E2E2E"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Apellido"
-                android:inputType="text"
-                android:minHeight="48dp"
-                android:padding="16dp"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="16dp">
 
-            <EditText
-                android:id="@+id/editTextNewLegajo"
+                <EditText
+                    android:id="@+id/editTextNewApellido"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Apellido"
+                    android:inputType="text"
+                    android:background="@drawable/edit_text_background"
+                    android:padding="16dp"
+                    android:textColor="#2E2E2E"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Legajo"
-                android:inputType="text"
-                android:minHeight="48dp"
-                android:padding="16dp"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="24dp">
 
+                <EditText
+                    android:id="@+id/editTextNewLegajo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Legajo"
+                    android:inputType="text"
+                    android:background="@drawable/edit_text_background"
+                    android:padding="16dp"
+                    android:textColor="#2E2E2E"/>
+            </com.google.android.material.textfield.TextInputLayout>
             <Button
                 android:id="@+id/buttonRegister"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Completar Registro"
-                android:minHeight="48dp"
-                android:layout_marginBottom="16dp" />
+                android:text="COMPLETAR REGISTRO"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#26A69A"
+                android:padding="12dp"
+                android:layout_marginBottom="24dp"/>
 
         </LinearLayout>
 
+        <!-- Elementos adicionales -->
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:indeterminateTint="#1B5E20"
             android:visibility="gone"/>
 
         <TextView
@@ -116,7 +160,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:textSize="16sp"
-            android:textColor="@android:color/black" />
+            android:textAlignment="center"
+            android:textColor="#2E2E2E"/>
 
     </LinearLayout>
 </ScrollView>

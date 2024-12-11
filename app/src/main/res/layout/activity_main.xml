@@ -79,17 +79,6 @@
             android:orientation="vertical"
             android:visibility="visible">
 
-            <EditText
-                android:id="@+id/etApellidoNombre"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Apellido y Nombre"
-                android:inputType="textPersonName"
-                android:minHeight="48dp"
-                android:padding="12dp"
-                android:background="@drawable/edit_text_background"
-                android:layout_marginBottom="16dp"/>
-
             <Spinner
                 android:id="@+id/spinnerTipoDocumento"
                 android:layout_width="match_parent"
@@ -98,14 +87,42 @@
                 android:background="@drawable/spinner_background"
                 android:layout_marginBottom="16dp"/>
 
-            <EditText
-                android:id="@+id/etNumeroDocumento"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Número de Documento"
-                android:inputType="number"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <EditText
+                    android:id="@+id/etNumeroDocumento"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Número de Documento"
+                    android:inputType="number"
+                    android:minHeight="48dp"
+                    android:padding="12dp"
+                    android:background="@drawable/edit_text_background"/>
+
+                <Button
+                    android:id="@+id/btnBuscarConductor"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Buscar"
+                    android:textColor="@color/white"
+                    android:background="@drawable/button_background"/>
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/etApellidoNombre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Apellido y Nombre"
+                android:inputType="textPersonName"
                 android:minHeight="48dp"
                 android:padding="12dp"
+                android:enabled="false"
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
@@ -117,6 +134,7 @@
                 android:inputType="textPostalAddress"
                 android:minHeight="48dp"
                 android:padding="12dp"
+                android:enabled="false"
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
@@ -187,12 +205,19 @@
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
+            <Spinner
+                android:id="@+id/spinnerClaseLicencia"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:background="@drawable/spinner_background"
+                android:layout_marginBottom="16dp"/>
             <EditText
                 android:id="@+id/etLicencia"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Número de Licencia"
-                android:inputType="text"
+                android:inputType="number"
                 android:minHeight="48dp"
                 android:padding="12dp"
                 android:background="@drawable/edit_text_background"
@@ -211,23 +236,14 @@
                 android:layout_marginBottom="16dp"/>
 
 
-            <EditText
-                android:id="@+id/etClase"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Clase de Licencia"
-                android:inputType="text"
-                android:minHeight="48dp"
-                android:padding="12dp"
-                android:background="@drawable/edit_text_background"
-                android:layout_marginBottom="16dp"/>
 
             <EditText
                 android:id="@+id/etVencimiento"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Fecha de Vencimiento"
-                android:inputType="date"
+                android:hint="Fecha de Vencimiento (DD/MM/YYYY)"
+                android:inputType="number"
+                android:maxLength="10"
                 android:minHeight="48dp"
                 android:padding="12dp"
                 android:background="@drawable/edit_text_background"
@@ -257,16 +273,30 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <EditText
-                android:id="@+id/etDominio"
+            <!-- Contenedor para dominio y botón de búsqueda -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Dominio"
-                android:inputType="text"
-                android:minHeight="48dp"
-                android:padding="12dp"
-                android:background="@drawable/edit_text_background"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <EditText
+                    android:id="@+id/etDominio"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Dominio"
+                    android:inputType="textCapCharacters"
+                    android:minHeight="48dp"
+                    android:padding="12dp"
+                    android:background="@drawable/edit_text_background"/>
+
+                <Button
+                    android:id="@+id/btnBuscarVehiculo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Buscar"/>
+            </LinearLayout>
 
             <EditText
                 android:id="@+id/etPropietario"
@@ -519,10 +549,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Tomar Foto"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/white"
             android:background="@drawable/button_background"
             android:minHeight="56dp"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="16dp"
+            style="@style/CustomButton" />
 
 
         <TextView
@@ -601,10 +632,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Insertar Datos del Conductor"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/white"
             android:background="@drawable/button_background"
             android:minHeight="56dp"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="16dp"
+            style="@style/CustomButton" />
+
+
 
         <Button
             android:id="@+id/btnAddMorePhotos"

@@ -115,6 +115,10 @@ public class MainActivity extends AppCompatActivity {
 
 
     // Declaración de vistas
+
+
+    private Button btnBuscarConductor;
+
     private boolean firmaEstaCargada = false;
     private ProgressDialog loadingDialog;
     private EditText spinnerExpedidaPor;
@@ -146,11 +150,13 @@ public class MainActivity extends AppCompatActivity {
 
 
     private static final float MIN_DISTANCE = 10; // 10 metros
+    private Button btnBuscarVehiculo;
     private EditText etApellidoNombre, etDomicilio, etLocalidad, etCodPostal, etDepartamento,
             etProvincia, etPais, etLicencia, etMultaInfo,
             etNumeroDocumento, etDominio, etOtraMarca, etModeloVehiculo, etPropietario,
             etLugar, etDepartamentoMulta, etMunicipioMulta;
     private Spinner spinnerTipoDocumento, spinnerMarca, spinnerTipoVehiculo, spinnerInfraccion;
+    private Spinner spinnerClaseLicencia;
     private Button btnTomarFoto, btnConectarImprimir, btnInsertarConductor;
     private AutoCompleteTextView actvDepartamento, actvLocalidad;
     private static final int REQUEST_CAMERA_PERMISSION = 200;
@@ -190,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        precargarFirma();
+
 
         // Configurar el manejador de excepciones no capturadas
         Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
@@ -217,12 +223,14 @@ public class MainActivity extends AppCompatActivity {
         setupSpinners();
         setupListeners();
         obtenerDatosInspector();
+        precargarFirma();
 
         // Inicialización de componentes para fotos
         initializePhotoComponents();
 
         // Configurar componentes adicionales
         setupAdditionalComponents();
+        setupVehiculoSearch();
     }
 
     private byte[] comandoFirma = null; // Agregar esta variable en la clase
@@ -426,14 +434,21 @@ public class MainActivity extends AppCompatActivity {
     // Modificación del método initializeViews para incluir todas las vistas necesarias
     private void initializeViews() {
         // Progress y Loading
+        spinnerClaseLicencia = findViewById(R.id.spinnerClaseLicencia);
         progressBar = findViewById(R.id.progressBar);
         loadingOverlay = findViewById(R.id.loadingOverlay);
-
+        // Inicializar vistas
+        etNumeroDocumento = findViewById(R.id.etNumeroDocumento);
+        etApellidoNombre = findViewById(R.id.etApellidoNombre);
+        etDomicilio = findViewById(R.id.etDomicilio);
+        spinnerTipoDocumento = findViewById(R.id.spinnerTipoDocumento);
+        btnBuscarConductor = findViewById(R.id.btnBuscarConductor);
         // Botones
         btnTomarFoto = findViewById(R.id.btnTomarFoto);
+        btnBuscarConductor.setOnClickListener(v -> buscarConductor());
         btnInsertarConductor = findViewById(R.id.btnInsertarConductor);
         btnBuscarLocalidad = findViewById(R.id.btnBuscarLocalidad);
-
+        btnBuscarVehiculo = findViewById(R.id.btnBuscarVehiculo);
         // Contenedores y grupos
         chipGroupInfracciones = findViewById(R.id.chipGroupInfracciones);
         layoutConductor = findViewById(R.id.layoutConductor);
@@ -462,11 +477,16 @@ public class MainActivity extends AppCompatActivity {
         etApellidoNombre = findViewById(R.id.etApellidoNombre);
         etDomicilio = findViewById(R.id.etDomicilio);
         etCodPostal = findViewById(R.id.etCodPostal);
-        etClase = findViewById(R.id.etClase);
+
         etVencimiento = findViewById(R.id.etVencimiento);
+        if (etVencimiento == null) {
+            Log.e("MainActivity", "Error: etVencimiento no se pudo inicializar");
+            return;
+        }
+
         etProvincia = findViewById(R.id.etProvincia);
         etPais = findViewById(R.id.etPais);
-        etLicencia = findViewById(R.id.etLicencia);
+
         etMultaInfo = findViewById(R.id.etMultaInfo);
         etNumeroDocumento = findViewById(R.id.etNumeroDocumento);
         etDominio = findViewById(R.id.etDominio);
@@ -476,6 +496,10 @@ public class MainActivity extends AppCompatActivity {
         etLugar = findViewById(R.id.etLugar);
         etDepartamentoMulta = findViewById(R.id.etDepartamentoMulta);
         etMunicipioMulta = findViewById(R.id.etMunicipioMulta);
+        etLicencia = findViewById(R.id.etLicencia);
+        if (etLicencia == null) {
+            Log.e("MainActivity", "Error: etLicencia no se pudo inicializar");
+        }
 
         // TextViews
         tvEstado = findViewById(R.id.tvEstado);
@@ -485,6 +509,67 @@ public class MainActivity extends AppCompatActivity {
         tvNumero = findViewById(R.id.tvNumero);
         tvEspecificaciones = findViewById(R.id.tvEspecificaciones);
     }
+    private void buscarConductor() {
+        String dni = etNumeroDocumento.getText().toString().trim();
+        if (dni.isEmpty()) {
+            etNumeroDocumento.setError("Ingrese un número de documento");
+            return;
+        }
+
+        // Mostrar ProgressBar o diálogo de carga
+        showLoading(true);
+
+        apiService.buscarConductorPorDNI("buscarConductorPorDNI", dni)
+                .enqueue(new Callback<RespuestaBuscarConductor>() {
+                    @Override
+                    public void onResponse(Call<RespuestaBuscarConductor> call,
+                                           Response<RespuestaBuscarConductor> response) {
+                        showLoading(false);
+
+                        if (response.isSuccessful() && response.body() != null) {
+                            RespuestaBuscarConductor respuesta = response.body();
+                            if (respuesta.isSuccess() && respuesta.getConductor() != null) {
+                                // Llenar los campos con los datos
+                                llenarDatosConductor(respuesta.getConductor());
+                                Toast.makeText(MainActivity.this,
+                                        "Datos encontrados correctamente",
+                                        Toast.LENGTH_SHORT).show();
+                            } else {
+                                // Mostrar mensaje de error
+                                String mensaje = respuesta.getMessage() != null ?
+                                        respuesta.getMessage() :
+                                        "No se encontraron datos del conductor";
+                                Toast.makeText(MainActivity.this,
+                                        mensaje,
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Toast.makeText(MainActivity.this,
+                                    "Error al buscar los datos del conductor",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<RespuestaBuscarConductor> call, Throwable t) {
+                        showLoading(false);
+                        Toast.makeText(MainActivity.this,
+                                "Error de conexión: " + t.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+    private void llenarDatosConductor(RespuestaBuscarConductor.ConductorData data) {
+        if (data != null) {
+            etApellidoNombre.setText(data.getApellidoNombre());
+            etDomicilio.setText(data.getDomicilio());
+            // Seleccionar "DNI" en el spinner
+            int position = ((ArrayAdapter)spinnerTipoDocumento.getAdapter())
+                    .getPosition("DNI");
+            spinnerTipoDocumento.setSelection(position);
+        }
+    }
+
 
     private void setupListeners() {
         // Listeners de botones principales
@@ -539,6 +624,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+        setupFechaVencimiento();
     }
 
     // Método para mostrar/ocultar loading
@@ -569,6 +655,57 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void setupFechaVencimiento() {
+        if (etVencimiento == null) {
+            Log.e("MainActivity", "Error: etVencimiento es null en setupFechaVencimiento");
+            return;
+        }
+
+        try {
+            etVencimiento.addTextChangedListener(new TextWatcher() {
+                private String current = "";
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    try {
+                        if (!s.toString().equals(current)) {
+                            String clean = s.toString().replaceAll("[^\\d]", "");
+                            if (clean.length() > 0) {
+                                if (clean.length() <= 8) {
+                                    String formatted;
+                                    if (clean.length() >= 2) {
+                                        formatted = clean.substring(0, 2);
+                                        if (clean.length() > 2) {
+                                            formatted += "/" + clean.substring(2, Math.min(4, clean.length()));
+                                            if (clean.length() > 4) {
+                                                formatted += "/" + clean.substring(4, Math.min(8, clean.length()));
+                                            }
+                                        }
+                                    } else {
+                                        formatted = clean;
+                                    }
+
+                                    current = formatted;
+                                    etVencimiento.setText(formatted);
+                                    etVencimiento.setSelection(formatted.length());
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Error en afterTextChanged: " + e.getMessage());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error al configurar TextWatcher: " + e.getMessage());
+        }
+    }
     private void agregarInfraccion(String infraccionDescripcion) {
         if (!infraccionesSeleccionadas.contains(infraccionDescripcion) &&
                 !infraccionDescripcion.equals("Seleccione una infracción")) {
@@ -843,12 +980,34 @@ public class MainActivity extends AppCompatActivity {
         setupInfraccionSpinner();
         setupExpedidoPorSpinner();
         setupEquipoMedicionSpinner();
+        setupClaseLicenciaSpinner();
         ArrayAdapter<CharSequence> adapterTipoEquipo = ArrayAdapter.createFromResource(this,
                 R.array.tipos_equipo, android.R.layout.simple_spinner_item);
         adapterTipoEquipo.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTipoEquipo.setAdapter(adapterTipoEquipo);
+
     }
 
+    private void setupClaseLicenciaSpinner() {
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.clases_licencia, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerClaseLicencia.setAdapter(adapter);
+
+        // Opcional: manejar la selección
+        spinnerClaseLicencia.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String claseSeleccionada = parent.getItemAtPosition(position).toString();
+                // Puedes hacer algo cuando se selecciona una clase
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Manejar cuando no hay selección
+            }
+        });
+    }
     private void setupTipoDocumentoSpinner() {
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
                 R.array.tipo_documento_array, android.R.layout.simple_spinner_item);
@@ -1436,7 +1595,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     private void imprimirMulta() {
         Log.d("ImpresionMulta", "Iniciando impresión de multa");
         if (bluetoothSocket == null || !bluetoothSocket.isConnected()) {
@@ -1463,7 +1621,7 @@ public class MainActivity extends AppCompatActivity {
             int hora = calendar.get(Calendar.HOUR_OF_DAY);
             int minuto = calendar.get(Calendar.MINUTE);
 
-            // Imprimir la imagen primero
+            // Imprimir la imagen y encabezado
             Log.d("ImpresionMulta", "Imprimiendo imagen");
             printPhoto(R.drawable.logos8);
 
@@ -1471,6 +1629,7 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("SERIE A - 2024", "", lineWidth);
             imprimirCampoEnLinea("", "", lineWidth);
 
+            // Imprimir información básica
             Log.d("ImpresionMulta", "Imprimiendo numero de Acta y fecha");
             printNewLine();
             imprimirCampoEnLinea("Numero de Acta: ", obtenerActaIdActual(), lineWidth);
@@ -1478,25 +1637,57 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Hora: ", String.format("%02d:%02d", hora, minuto), lineWidth);
             printNewLine();
 
-            Log.d("ImpresionMulta", "Imprimiendo sección conductor");
-            printNewLine();
-            imprimirCampoEnLinea("CONDUCTOR", "", lineWidth);
-            printNewLine();
-            imprimirCampoEnLinea("Apellido y Nombre: ", etApellidoNombre.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Tipo Documento: ", spinnerTipoDocumento.getSelectedItem().toString(), lineWidth);
-            imprimirCampoEnLinea("Numero Documento: ", etNumeroDocumento.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Domicilio: ", etDomicilio.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Localidad: ", actvLocalidad.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Codigo Postal: ", etCodPostal.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Departamento: ", actvDepartamento.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Provincia: ", etProvincia.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Pais: ", etPais.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Licencia: ", etLicencia.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Expedida por: ", spinnerExpedidaPor.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Clase: ", etClase.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Vencimiento: ", etVencimiento.getText().toString(), lineWidth);
-            printNewLine();
+            // Sección conductor - Solo imprimir si hay datos relevantes
+            boolean tieneDatosConductor = !TextUtils.isEmpty(etApellidoNombre.getText()) ||
+                    !TextUtils.isEmpty(etNumeroDocumento.getText());
 
+            if (tieneDatosConductor) {
+                Log.d("ImpresionMulta", "Imprimiendo sección conductor");
+                printNewLine();
+                imprimirCampoEnLinea("CONDUCTOR", "", lineWidth);
+                printNewLine();
+
+                if (!TextUtils.isEmpty(etApellidoNombre.getText())) {
+                    imprimirCampoEnLinea("Apellido y Nombre: ", etApellidoNombre.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etNumeroDocumento.getText())) {
+                    imprimirCampoEnLinea("Tipo Documento: ", spinnerTipoDocumento.getSelectedItem().toString(), lineWidth);
+                    imprimirCampoEnLinea("Numero Documento: ", etNumeroDocumento.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etDomicilio.getText())) {
+                    imprimirCampoEnLinea("Domicilio: ", etDomicilio.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(actvLocalidad.getText())) {
+                    imprimirCampoEnLinea("Localidad: ", actvLocalidad.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etCodPostal.getText())) {
+                    imprimirCampoEnLinea("Codigo Postal: ", etCodPostal.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(actvDepartamento.getText())) {
+                    imprimirCampoEnLinea("Departamento: ", actvDepartamento.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etProvincia.getText())) {
+                    imprimirCampoEnLinea("Provincia: ", etProvincia.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etPais.getText())) {
+                    imprimirCampoEnLinea("Pais: ", etPais.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etLicencia.getText())) {
+                    imprimirCampoEnLinea("Licencia: ", etLicencia.getText().toString(), lineWidth);
+                    if (!TextUtils.isEmpty(spinnerExpedidaPor.getText())) {
+                        imprimirCampoEnLinea("Expedida por: ", spinnerExpedidaPor.getText().toString(), lineWidth);
+                    }
+                    String claseLicencia = spinnerClaseLicencia.getSelectedItemPosition() > 0 ?
+                            spinnerClaseLicencia.getSelectedItem().toString() :
+                            "No especificada";
+                    imprimirCampoEnLinea("Clase Licencia: ", claseLicencia, lineWidth);
+                    if (!TextUtils.isEmpty(etVencimiento.getText())) {
+                        imprimirCampoEnLinea("Vencimiento: ", etVencimiento.getText().toString(), lineWidth);
+                    }
+                }
+                printNewLine();
+            }
+            // Imprimir sección vehículo (siempre obligatoria)
             Log.d("ImpresionMulta", "Imprimiendo sección vehículo");
             printNewLine();
             imprimirCampoEnLinea("VEHICULO", "", lineWidth);
@@ -1511,6 +1702,7 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Tipo Vehiculo: ", spinnerTipoVehiculo.getSelectedItem().toString(), lineWidth);
             printNewLine();
 
+            // Imprimir sección hecho (siempre obligatoria)
             Log.d("ImpresionMulta", "Imprimiendo sección hecho");
             printNewLine();
             imprimirCampoEnLinea("HECHO", "", lineWidth);
@@ -1522,54 +1714,59 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Lugar: ", etLugar.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Departamento Multa: ", etDepartamentoMulta.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Municipio Multa: ", etMunicipioMulta.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Info Multa: ", etMultaInfo.getText().toString(), lineWidth);
-            printNewLine();
-
-            Log.d("ImpresionMulta", "Imprimiendo sección especificaciones");
-            printNewLine();
-            imprimirCampoEnLinea("ESPECIFICACIONES", "", lineWidth);
-            printNewLine();
-
-            // Obtener el tipo de equipo seleccionado
-            String tipoEquipo = spinnerTipoEquipo.getSelectedItem().toString();
-            imprimirCampoEnLinea("Tipo Equipo: ", tipoEquipo, lineWidth);
-
-            // Ajustar la impresión según el tipo de equipo
-            if (tipoEquipo.equals("Etilometro")) {
-                imprimirCampoEnLinea("Equipo: ", "Etilometro con dispositivo impresor", lineWidth);
-                imprimirCampoEnLinea("Marca: ", etMarcaCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Modelo: ", etModeloCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Serie: ", etSerieCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Codigo Aprobacion: ", etCodAprobacionCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Valor: ", etValorCinemometro.getText().toString(), lineWidth);
-            } else if (tipoEquipo.equals("Decibelimetro")) {
-                imprimirCampoEnLinea("Equipo: ", "Decibelimetro", lineWidth);
-                imprimirCampoEnLinea("Marca: ", etMarcaCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Modelo: ", etModeloCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Serie: ", etSerieCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Codigo Aprobacion: ", etCodAprobacionCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Valor: ", etValorCinemometro.getText().toString() + " dB", lineWidth);
-            } else {
-                imprimirCampoEnLinea("Equipo: ", etEquipo.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Marca: ", etMarcaCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Modelo: ", etModeloCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Serie: ", etSerieCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Codigo Aprobacion: ", etCodAprobacionCinemometro.getText().toString(), lineWidth);
-                imprimirCampoEnLinea("Valor: ", etValorCinemometro.getText().toString(), lineWidth);
+            if (!TextUtils.isEmpty(etMultaInfo.getText())) {
+                imprimirCampoEnLinea("Info Multa: ", etMultaInfo.getText().toString(), lineWidth);
             }
             printNewLine();
 
+            // Sección especificaciones - Solo imprimir si hay datos
+            String tipoEquipo = spinnerTipoEquipo.getSelectedItem().toString();
+            boolean tieneEspecificaciones = !tipoEquipo.equals("Seleccione un tipo") &&
+                    !TextUtils.isEmpty(etEquipo.getText());
+
+            if (tieneEspecificaciones) {
+                Log.d("ImpresionMulta", "Imprimiendo sección especificaciones");
+                printNewLine();
+                imprimirCampoEnLinea("ESPECIFICACIONES", "", lineWidth);
+                printNewLine();
+
+                imprimirCampoEnLinea("Tipo Equipo: ", tipoEquipo, lineWidth);
+
+                if (tipoEquipo.equals("Etilometro")) {
+                    imprimirCampoEnLinea("Equipo: ", "Etilometro con dispositivo impresor", lineWidth);
+                } else if (tipoEquipo.equals("Decibelimetro")) {
+                    imprimirCampoEnLinea("Equipo: ", "Decibelimetro", lineWidth);
+                } else {
+                    imprimirCampoEnLinea("Equipo: ", etEquipo.getText().toString(), lineWidth);
+                }
+
+                if (!TextUtils.isEmpty(etMarcaCinemometro.getText())) {
+                    imprimirCampoEnLinea("Marca: ", etMarcaCinemometro.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etModeloCinemometro.getText())) {
+                    imprimirCampoEnLinea("Modelo: ", etModeloCinemometro.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etSerieCinemometro.getText())) {
+                    imprimirCampoEnLinea("Serie: ", etSerieCinemometro.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etCodAprobacionCinemometro.getText())) {
+                    imprimirCampoEnLinea("Codigo Aprobacion: ", etCodAprobacionCinemometro.getText().toString(), lineWidth);
+                }
+                if (!TextUtils.isEmpty(etValorCinemometro.getText())) {
+                    String valor = etValorCinemometro.getText().toString();
+                    if (tipoEquipo.equals("Decibelimetro")) {
+                        valor += " dB";
+                    }
+                    imprimirCampoEnLinea("Valor: ", valor, lineWidth);
+                }
+                printNewLine();
+            }
+
+            // Imprimir datos del inspector y firma (siempre obligatorio)
             String urlFirma = obtenerUrlFirma(legajoInspector);
             Log.d("Firma", "URL de la firma: " + urlFirma);
             verificarExistenciaFirma(urlFirma);
-            Log.d("Firma", "Datos del Inspector:");
-            Log.d("Firma", "Nombre: " + nombreInspector);
-            Log.d("Firma", "Apellido: " + apellidoInspector);
-            Log.d("Firma", "Legajo: " + legajoInspector);
 
-            Log.d("Firma", "URL de la firma: " + urlFirma);
-            verificarExistenciaFirma(urlFirma);
-            Log.d("Firma", "URL de la firma: " + urlFirma);
             Log.d("ImpresionMulta", "Imprimiendo sección datos del inspector");
             printNewLine();
             imprimirCampoEnLinea("DATOS DEL INSPECTOR", "", lineWidth);
@@ -1578,22 +1775,22 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Legajo: ", legajoInspector, lineWidth);
             printNewLine();
 
-
-
-            // Después de imprimir los datos del inspector
+            // Imprimir firma
             outputStream.write(PrinterCommands.FEED_LINE);
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
             imprimirCampoEnLinea("FIRMA DEL INSPECTOR", "", lineWidth);
             outputStream.write(PrinterCommands.FEED_LINE);
 
-// Imprimir la firma
             Log.d("Firma", "¿OutputStream es null? " + (outputStream == null));
             imprimirFirma(urlFirma, lineWidth);
 
-            outputStream.write(PrinterCommands.ESC_ALIGN_LEFT); // Volver a alineación izquierda
+            outputStream.write(PrinterCommands.ESC_ALIGN_LEFT);
             outputStream.write(PrinterCommands.FEED_LINE);
 
+            // Imprimir texto final
             imprimirCampoEnLinea("LA PRESENTE SERA ELEVADA PARA SU INTERVENCION A LA AUTORIDAD DE JUZGAMIENTO DEL TRIBUNAL MUNICIPAL DE FALTAS, CON DOMICILIO EN: SAN MARTIN 1555 POSADAS, DONDE PODRA OFRECER DESCARGO Y EJERCER SU DERECHO DE DEFENSA EN LOS TERMINOS DE LOS ARTS.69,70 Y 71 DE LA LEY 24.449.", "", lineWidth);
+
+            // Finalizar impresión
             outputStream.write(new byte[]{0x0A, 0x0A, 0x0A, 0x0A});
             outputStream.write(new byte[]{0x1D, 0x56, 0x01}); // Corte parcial
 
@@ -2243,6 +2440,7 @@ public class MainActivity extends AppCompatActivity {
     private void setActaIdActual(String id) {
         this.actaIdActual = id;
     }
+
     private void insertarDatosConductor() {
         if (infraccionesSeleccionadas.isEmpty()) {
             mostrarError("Debe seleccionar al menos una infracción");
@@ -2258,7 +2456,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // Verificar si el Bluetooth está disponible y activado antes de continuar
+            // Verificar Bluetooth
             if (bluetoothAdapter == null) {
                 mostrarError("Bluetooth no disponible en este dispositivo. No se podrá imprimir.");
                 return;
@@ -2273,7 +2471,7 @@ public class MainActivity extends AppCompatActivity {
             showLoading(true);
             btnInsertarConductor.setEnabled(false);
 
-            // Preparar datos
+            // Preparar datos de infracciones
             JSONArray infraccionesJson = new JSONArray();
             for (String infraccion : infraccionesSeleccionadas) {
                 String infraccionId = infraccionIdMap.get(infraccion);
@@ -2282,21 +2480,15 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            // Obtener y validar datos del formulario
+            // Obtener datos básicos
             String numero = generarNumeroAleatorio();
             tvNumero.setText(numero);
             String fecha = getCurrentDate();
             String hora = getCurrentTime();
+
+            // Datos del vehículo (obligatorios)
             String dominio = etDominio.getText().toString().trim();
             String lugar = etLugar.getText().toString().trim();
-            String infractorDni = etNumeroDocumento.getText().toString().trim();
-            String infractorNombre = etApellidoNombre.getText().toString().trim();
-            String infractorDomicilio = etDomicilio.getText().toString().trim();
-            String infractorLocalidad = actvLocalidad.getText().toString().trim();
-            String infractorCp = etCodPostal.getText().toString().trim();
-            String infractorProvincia = etProvincia.getText().toString().trim();
-            String infractorPais = etPais.getText().toString().trim();
-            String infractorLicencia = etLicencia.getText().toString().trim();
             String tipoVehiculo = spinnerTipoVehiculo.getSelectedItem().toString();
             String marcaVehiculo = spinnerMarca.getSelectedItem().toString();
             String propietario = etPropietario.getText().toString().trim();
@@ -2305,16 +2497,14 @@ public class MainActivity extends AppCompatActivity {
             String municipio = etMunicipioMulta.getText().toString().trim();
             String observaciones = etMultaInfo.getText().toString().trim();
 
-            // Validación de campos requeridos
-            if (TextUtils.isEmpty(infractorNombre) || TextUtils.isEmpty(infractorDni) ||
-                    TextUtils.isEmpty(dominio) || TextUtils.isEmpty(lugar) ||
-                    TextUtils.isEmpty(propietario) || TextUtils.isEmpty(modeloVehiculo) ||
-                    TextUtils.isEmpty(departamento) || TextUtils.isEmpty(municipio)) {
+            // Validar solo campos obligatorios del vehículo
+            if (TextUtils.isEmpty(dominio) || TextUtils.isEmpty(lugar)) {
                 showLoading(false);
                 btnInsertarConductor.setEnabled(true);
-                mostrarError("Por favor, complete todos los campos obligatorios");
+                mostrarError("Por favor, complete los campos obligatorios: Dominio y Lugar");
                 return;
             }
+
             // Manejar caso de "Otra" marca
             if (marcaVehiculo.equals("Otra")) {
                 marcaVehiculo = etOtraMarca.getText().toString().trim();
@@ -2326,17 +2516,47 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
+            // Datos del conductor con valores por defecto si están vacíos
+            String infractorDni = etNumeroDocumento.getText().toString().trim();
+            if (infractorDni.isEmpty()) infractorDni = "00000000";
+
+            String infractorNombre = etApellidoNombre.getText().toString().trim();
+            if (infractorNombre.isEmpty()) infractorNombre = "Sin Identificar";
+
+            String infractorDomicilio = etDomicilio.getText().toString().trim();
+            if (infractorDomicilio.isEmpty()) infractorDomicilio = "Sin Especificar";
+
+            String infractorLocalidad = actvLocalidad.getText().toString().trim();
+            if (infractorLocalidad.isEmpty()) infractorLocalidad = "Sin Especificar";
+
+            String infractorCp = etCodPostal.getText().toString().trim();
+            if (infractorCp.isEmpty()) infractorCp = "0000";
+
+            String infractorProvincia = etProvincia.getText().toString().trim();
+            if (infractorProvincia.isEmpty()) infractorProvincia = "Sin Especificar";
+
+            String infractorPais = etPais.getText().toString().trim();
+            if (infractorPais.isEmpty()) infractorPais = "Sin Especificar";
+
+            String infractorLicencia = etLicencia.getText().toString().trim();
+            if (infractorLicencia.isEmpty()) infractorLicencia = "Sin Especificar";
             // Guardar datos para uso en callbacks
             final List<String> imagenesPendientes = new ArrayList<>(imagenBase64List);
             final boolean tieneEquipo = !TextUtils.isEmpty(etEquipo.getText().toString().trim());
 
-            // Llamada a la API
+            // Llamada a la API con valores por defecto
             Call<RespuestaInsertarConductor> call = apiService.insertarConductor(
                     "insertarConductor",
                     numero, fecha, hora, dominio, lugar,
                     infraccionesJson.toString(),
-                    infractorDni, infractorNombre, infractorDomicilio, infractorLocalidad,
-                    infractorCp, infractorProvincia, infractorPais, infractorLicencia,
+                    infractorDni, // Ahora siempre tiene un valor por defecto
+                    infractorNombre, // Ahora siempre tiene un valor por defecto
+                    infractorDomicilio, // Ahora siempre tiene un valor por defecto
+                    infractorLocalidad, // Ahora siempre tiene un valor por defecto
+                    infractorCp, // Ahora siempre tiene un valor por defecto
+                    infractorProvincia, // Ahora siempre tiene un valor por defecto
+                    infractorPais, // Ahora siempre tiene un valor por defecto
+                    infractorLicencia, // Ahora siempre tiene un valor por defecto
                     tipoVehiculo,
                     inspectorId,
                     marcaVehiculo,
@@ -2360,45 +2580,27 @@ public class MainActivity extends AppCompatActivity {
                                 // Contador de operaciones pendientes
                                 AtomicInteger operacionesPendientes = new AtomicInteger(0);
 
-                                // Contamos las operaciones que necesitamos realizar
+                                // Solo contar operaciones si hay datos
                                 if (!imagenBase64List.isEmpty()) {
                                     operacionesPendientes.incrementAndGet();
                                 }
-                                // Verificamos si hay datos de equipo de medición
-                                if (!etEquipo.getText().toString().trim().isEmpty()) {
+                                if (tieneEquipo) {
                                     operacionesPendientes.incrementAndGet();
                                 }
 
-                                // Si no hay operaciones adicionales, procedemos a imprimir
+                                // Si no hay operaciones adicionales
                                 if (operacionesPendientes.get() == 0) {
                                     finalizarProcesoEImprimir(true);
                                     return;
                                 }
-                                // Si hay imágenes, las subimos
-                                if (!imagenBase64List.isEmpty()) {
-                                    Call<RespuestaSubirImagen> callImagen = apiService.subirImagen(
-                                            "subirImagen", actaId, imagenBase64List);
-                                    callImagen.enqueue(new Callback<RespuestaSubirImagen>() {
-                                        @Override
-                                        public void onResponse(Call<RespuestaSubirImagen> call,
-                                                               Response<RespuestaSubirImagen> response) {
-                                            if (operacionesPendientes.decrementAndGet() == 0) {
-                                                finalizarProcesoEImprimir(true);
-                                            }
-                                        }
 
-                                        @Override
-                                        public void onFailure(Call<RespuestaSubirImagen> call, Throwable t) {
-                                            mostrarError("Error al subir imágenes: " + t.getMessage());
-                                            if (operacionesPendientes.decrementAndGet() == 0) {
-                                                finalizarProcesoEImprimir(false);
-                                            }
-                                        }
-                                    });
+                                // Subir imágenes si existen
+                                if (!imagenBase64List.isEmpty()) {
+                                    subirImagenes(actaId, operacionesPendientes);
                                 }
 
-                                // Si hay datos de equipo, los insertamos
-                                if (!etEquipo.getText().toString().trim().isEmpty()) {
+                                // Insertar equipo solo si hay datos
+                                if (tieneEquipo) {
                                     insertarEquipoMedicion(actaId, new Callback<RespuestaInsertarEquipoMedicion>() {
                                         @Override
                                         public void onResponse(Call<RespuestaInsertarEquipoMedicion> call,
@@ -2438,6 +2640,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }
+
                 @Override
                 public void onFailure(Call<RespuestaInsertarConductor> call, Throwable t) {
                     finalizarProcesoEImprimir(false);
@@ -2454,8 +2657,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-    // Modifica el método finalizarProcesoEImprimir
     private void finalizarProcesoEImprimir(boolean exito) {
         runOnUiThread(() -> {
             if (loadingOverlay != null) {
@@ -2484,10 +2685,7 @@ public class MainActivity extends AppCompatActivity {
                         public void run() {
                             if (firmaEstaCargada) {
                                 dialog.dismiss();
-                                if (verificarBluetoothYConectar()) {
-                                    imprimirMulta();
-                                    limpiarCampos();
-                                }
+                                mostrarDialogoImpresion();
                             } else {
                                 // Intentar nuevamente en 500ms
                                 new Handler().postDelayed(this, 500);
@@ -2495,16 +2693,131 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }, 500);
                 } else {
-                    // La firma ya está cargada, imprimir directamente
-                    if (verificarBluetoothYConectar()) {
-                        imprimirMulta();
-                        limpiarCampos();
-                    }
+                    // La firma ya está cargada, mostrar diálogo de impresión
+                    mostrarDialogoImpresion();
                 }
             } else {
                 mostrarError("Ocurrió un error al guardar los datos. Puede intentar nuevamente.");
             }
         });
+    }
+    private void mostrarDialogoImpresion() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Imprimir multa");
+        builder.setMessage("¿Desea imprimir la multa?");
+        builder.setPositiveButton("Sí", (dialog, which) -> {
+            dialog.dismiss();
+            conectarEImprimir(true); // true indica primera impresión
+        });
+        builder.setNegativeButton("No", (dialog, which) -> {
+            dialog.dismiss();
+            limpiarCampos();
+        });
+        builder.setCancelable(false);
+        builder.show();
+    }
+    private void conectarEImprimir(boolean esPrimeraImpresion) {
+        try {
+            // Verificar si ya hay una conexión activa
+            if (bluetoothSocket != null && bluetoothSocket.isConnected()) {
+                imprimirMulta();
+                preguntarSiImprimirOtra();
+                return;
+            }
+
+            // Si no hay conexión, buscar dispositivos y conectar
+            if (bluetoothAdapter == null) {
+                mostrarError("Bluetooth no disponible en este dispositivo");
+                return;
+            }
+
+            if (!bluetoothAdapter.isEnabled()) {
+                mostrarError("Por favor, active el Bluetooth para imprimir");
+                return;
+            }
+
+            Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
+            if (pairedDevices.isEmpty()) {
+                mostrarError("No se encontraron dispositivos emparejados");
+                return;
+            }
+
+            // Intentar conectar con cada dispositivo hasta encontrar la impresora
+            boolean conexionExitosa = false;
+            for (BluetoothDevice device : pairedDevices) {
+                try {
+                    bluetoothDevice = device;
+                    bluetoothSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
+                    bluetoothSocket.connect();
+                    conexionExitosa = true;
+                    Log.d("Bluetooth", "Conectado exitosamente a: " + device.getName());
+                    break;
+                } catch (IOException e) {
+                    Log.e("Bluetooth", "Error al conectar con " + device.getName() + ": " + e.getMessage());
+                    try {
+                        bluetoothSocket.close();
+                    } catch (IOException closeException) {
+                        Log.e("Bluetooth", "Error al cerrar socket: " + closeException.getMessage());
+                    }
+                }
+            }
+
+            if (conexionExitosa) {
+                imprimirMulta();
+                if (esPrimeraImpresion) {
+                    preguntarSiImprimirOtra();
+                }
+            } else {
+                mostrarError("No se pudo conectar a ninguna impresora");
+            }
+
+        } catch (SecurityException e) {
+            mostrarError("Error de seguridad al acceder al Bluetooth: " + e.getMessage());
+        }
+    }
+
+    private void preguntarSiImprimirOtra() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Imprimir otra copia");
+        builder.setMessage("¿Desea imprimir otra copia de la multa?");
+        builder.setPositiveButton("Sí", (dialog, which) -> {
+            dialog.dismiss();
+            conectarEImprimir(false); // false indica que no es la primera impresión
+        });
+        builder.setNegativeButton("No", (dialog, which) -> {
+            dialog.dismiss();
+            // Cerrar la conexión Bluetooth antes de limpiar
+            if (bluetoothSocket != null) {
+                try {
+                    bluetoothSocket.close();
+                    bluetoothSocket = null;
+                } catch (IOException e) {
+                    Log.e("Bluetooth", "Error al cerrar conexión: " + e.getMessage());
+                }
+            }
+            limpiarCampos();
+        });
+        builder.setCancelable(false);
+        builder.show();
+    }
+
+    private void mostrarDialogoOtraImpresion() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Imprimir otra copia");
+        builder.setMessage("¿Desea imprimir otra copia de la multa?");
+        builder.setPositiveButton("Sí", (dialog, which) -> {
+            if (verificarBluetoothYConectar()) {
+                imprimirMulta();
+                // Volver a mostrar este diálogo después de imprimir
+                mostrarDialogoOtraImpresion();
+            }
+        });
+        builder.setNegativeButton("No", (dialog, which) -> {
+            dialog.dismiss();
+            limpiarCampos();
+        });
+        builder.setCancelable(false);
+        builder.show();
     }
     // Método auxiliar para verificar Bluetooth
     private boolean verificarBluetoothYConectar() {
@@ -2585,18 +2898,18 @@ public class MainActivity extends AppCompatActivity {
                     if (response.isSuccessful() && response.body() != null) {
                         Log.d("DEBUG", "Imágenes subidas exitosamente");
                         if (operacionesPendientes.decrementAndGet() == 0) {
-                            finalizarProceso(true);
+                            finalizarProcesoEImprimir(true);
                         }
                     } else {
                         handleErrorResponse(response, "Error al subir imágenes");
                         if (operacionesPendientes.decrementAndGet() == 0) {
-                            finalizarProceso(false);
+                            finalizarProcesoEImprimir(false);
                         }
                     }
                 } catch (IOException e) {
                     handleException("subir imágenes", e);
                     if (operacionesPendientes.decrementAndGet() == 0) {
-                        finalizarProceso(false);
+                        finalizarProcesoEImprimir(false);
                     }
                 }
             }
@@ -2605,10 +2918,126 @@ public class MainActivity extends AppCompatActivity {
             public void onFailure(Call<RespuestaSubirImagen> call, Throwable t) {
                 handleError("Error al subir imágenes", t);
                 if (operacionesPendientes.decrementAndGet() == 0) {
-                    finalizarProceso(false);
+                    finalizarProcesoEImprimir(false);
                 }
             }
         });
+    }
+
+    private void setupVehiculoSearch() {
+        Button btnBuscarVehiculo = findViewById(R.id.btnBuscarVehiculo);
+        if (btnBuscarVehiculo != null) {
+            btnBuscarVehiculo.setOnClickListener(v -> {
+                String dominio = etDominio.getText().toString().trim().toUpperCase();
+                if (dominio.isEmpty()) {
+                    mostrarError("Por favor, ingrese un dominio");
+                    return;
+                }
+                buscarVehiculo(dominio);
+            });
+        }
+    }
+
+    private void buscarVehiculo(String dominio) {
+        // Asegurarnos que el dominio esté en mayúsculas y sin espacios
+        String dominioFormateado = dominio.toUpperCase().trim();
+
+        showLoading(true);
+        Log.d("DEBUG", "Buscando vehículo con dominio: " + dominioFormateado);
+
+        Call<RespuestaVehiculo> call = apiService.buscarVehiculo("buscarVehiculo", dominioFormateado);
+        Log.d("DEBUG", "Enviando parámetros - accion: buscarVehiculo, dominio: " + dominioFormateado);
+        call.enqueue(new Callback<RespuestaVehiculo>() {
+            @Override
+            public void onResponse(Call<RespuestaVehiculo> call, Response<RespuestaVehiculo> response) {
+                showLoading(false);
+
+                if (!response.isSuccessful()) {
+                    Log.e("DEBUG", "Error en la respuesta: " + response.code());
+                    try {
+                        String errorBody = response.errorBody() != null ? response.errorBody().string() : "Error desconocido";
+                        Log.e("DEBUG", "Error body: " + errorBody);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                if (response.isSuccessful() && response.body() != null) {
+                    RespuestaVehiculo respuesta = response.body();
+                    Log.d("DEBUG", "Respuesta recibida: " + new Gson().toJson(respuesta));
+
+                    if (respuesta.isSuccess() && respuesta.getVehiculo() != null) {
+                        RespuestaVehiculo.Vehiculo vehiculo = respuesta.getVehiculo();
+
+                        runOnUiThread(() -> {
+                            // Actualizar campos
+                            etPropietario.setText(vehiculo.getPropietario());
+
+                            // Para la marca
+                            String marca = vehiculo.getMarca();
+                            if (marca != null) {
+                                int position = -1;
+                                for (int i = 0; i < spinnerMarca.getCount(); i++) {
+                                    if (spinnerMarca.getItemAtPosition(i).toString().equalsIgnoreCase(marca)) {
+                                        position = i;
+                                        break;
+                                    }
+                                }
+                                if (position != -1) {
+                                    spinnerMarca.setSelection(position);
+                                } else {
+                                    // Si no encuentra la marca en el spinner, seleccionar "Otra" y llenar el campo
+                                    for (int i = 0; i < spinnerMarca.getCount(); i++) {
+                                        if (spinnerMarca.getItemAtPosition(i).toString().equals("Otra")) {
+                                            spinnerMarca.setSelection(i);
+                                            etOtraMarca.setText(marca);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            etModeloVehiculo.setText(vehiculo.getModelo());
+
+                            // Para el tipo de vehículo
+                            String tipo = vehiculo.getTipoVehiculo();
+                            if (tipo != null) {
+                                for (int i = 0; i < spinnerTipoVehiculo.getCount(); i++) {
+                                    if (spinnerTipoVehiculo.getItemAtPosition(i).toString().equalsIgnoreCase(tipo)) {
+                                        spinnerTipoVehiculo.setSelection(i);
+                                        break;
+                                    }
+                                }
+                            }
+
+                            mostrarMensaje("Vehículo encontrado");
+                        });
+                    } else {
+                        limpiarCamposVehiculo();
+                        mostrarError("No se encontró información del vehículo con dominio: " + dominioFormateado);
+                    }
+                } else {
+                    limpiarCamposVehiculo();
+                    mostrarError("Error al buscar el vehículo");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<RespuestaVehiculo> call, Throwable t) {
+                showLoading(false);
+                limpiarCamposVehiculo();
+                Log.e("DEBUG", "Error de conexión: " + t.getMessage(), t);
+                mostrarError("Error de conexión: " + t.getMessage());
+            }
+        });
+    }
+
+    private void limpiarCamposVehiculo() {
+        etPropietario.setText("");
+        spinnerMarca.setSelection(0);
+        etOtraMarca.setText("");
+        etModeloVehiculo.setText("");
+        spinnerTipoVehiculo.setSelection(0);
     }
 
     // Método auxiliar para finalizar el proceso
