@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
@@ -33,16 +34,24 @@
             android:background="@drawable/edit_text_background"
             android:layout_marginBottom="16dp" />
 
-        <EditText
-            android:id="@+id/editTextPassword"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Contraseña"
-            android:inputType="textPassword"
-            android:minHeight="48dp"
-            android:padding="16dp"
-            android:background="@drawable/edit_text_background"
-            android:layout_marginBottom="24dp" />
+            app:passwordToggleEnabled="true"
+            app:passwordToggleTint="#006B3F"
+            android:layout_marginBottom="24dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/editTextPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Contraseña"
+                android:inputType="textPassword"
+                android:minHeight="48dp"
+                android:padding="16dp"
+                android:background="@drawable/edit_text_background" />
+
+        </com.google.android.material.textfield.TextInputLayout>
 
         <Button
             android:id="@+id/buttonLogin"
@@ -50,12 +59,12 @@
             android:layout_height="wrap_content"
             android:text="INICIAR SESIÓN"
             android:textColor="@color/white"
-        android:background="@drawable/button_background"
-        android:minHeight="56dp"
-        android:layout_marginBottom="16dp"
-        android:layout_marginTop="8dp"
-        android:padding="12dp"
-        style="@style/CustomButton" />
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
+            android:layout_marginBottom="16dp"
+            android:layout_marginTop="8dp"
+            android:padding="12dp"
+            style="@style/CustomButton" />
 
         <Button
             android:id="@+id/buttonShowRegister"
@@ -63,11 +72,11 @@
             android:layout_height="wrap_content"
             android:text="REGISTRARSE"
             android:textColor="@color/white"
-        android:background="@drawable/button_background"
-        android:minHeight="56dp"
-        android:layout_marginBottom="24dp"
-        android:padding="12dp"
-        style="@style/CustomButton" />
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
+            android:layout_marginBottom="24dp"
+            android:padding="12dp"
+            style="@style/CustomButton" />
 
         <LinearLayout
             android:id="@+id/layoutRegister"
@@ -87,16 +96,24 @@
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp" />
 
-            <EditText
-                android:id="@+id/editTextNewPassword"
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Nueva Contraseña"
-                android:inputType="textPassword"
-                android:minHeight="48dp"
-                android:padding="16dp"
-                android:background="@drawable/edit_text_background"
-                android:layout_marginBottom="16dp" />
+                app:passwordToggleEnabled="true"
+                app:passwordToggleTint="#006B3F"
+                android:layout_marginBottom="16dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/editTextNewPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Nueva Contraseña"
+                    android:inputType="textPassword"
+                    android:minHeight="48dp"
+                    android:padding="16dp"
+                    android:background="@drawable/edit_text_background" />
+
+            </com.google.android.material.textfield.TextInputLayout>
 
             <EditText
                 android:id="@+id/editTextNewNombre"
@@ -137,11 +154,11 @@
                 android:layout_height="wrap_content"
                 android:text="COMPLETAR REGISTRO"
                 android:textColor="@color/white"
-            android:background="@drawable/button_background"
-            android:minHeight="56dp"
-            android:layout_marginBottom="16dp"
-            android:padding="12dp"
-            style="@style/CustomButton" />
+                android:background="@drawable/button_background"
+                android:minHeight="56dp"
+                android:layout_marginBottom="16dp"
+                android:padding="12dp"
+                style="@style/CustomButton" />
 
         </LinearLayout>
 

@@ -4,14 +4,14 @@
         <item>Seleccione tipo de documento</item>
         <item>DNI</item>
         <item>Pasaporte</item>
-        <item>Cédula de Identidad</item>
+        <item>Cedula de Identidad</item>
     </string-array>
 
     <string-array name="infraccion_array">
-        <item>Seleccione una infracción</item>
+        <item>Seleccione una infraccion</item>
         <item>Exceso de velocidad</item>
         <item>Estacionamiento prohibido</item>
-        <item>Semáforo en rojo</item>
+        <item>Semaforo en rojo</item>
     </string-array>
 
     <string-array name="expedido_por_array">
@@ -23,7 +23,7 @@
 
     <string-array name="tipos_equipo">
         <item>Seleccione un tipo</item>
-        <item>Etilometro</item>
+        <item>Alcoholimetro</item>
         <item>Decibelimetro</item>
     </string-array>
 
@@ -33,29 +33,29 @@
         <item>Clase A 1.1 - Ciclomotores hasta 50cc</item>
         <item>Clase A 1.2 - Motocicletas hasta 150cc</item>
         <item>Clase A 1.3 - Motocicletas hasta 300cc</item>
-        <item>Clase A 1.4 - Motocicletas más de 300cc</item>
+        <item>Clase A 1.4 - Motocicletas mas de 300cc</item>
         <item>Clase A 2 - Triciclos y cuatriciclos sin cabina</item>
         <item>Clase A 2.1 - Triciclos y cuatriciclos hasta 300cc</item>
-        <item>Clase A 2.2 - Triciclos y cuatriciclos más de 300cc</item>
+        <item>Clase A 2.2 - Triciclos y cuatriciclos mas de 300cc</item>
         <item>Clase A 3 - Triciclos y cuatriciclos cabinados</item>
-        <item>Clase B 1 - Automóviles hasta 3500kg</item>
-        <item>Clase B 2 - Automóviles hasta 3500kg con acoplado</item>
+        <item>Clase B 1 - Automoviles hasta 3500kg</item>
+        <item>Clase B 2 - Automoviles hasta 3500kg con acoplado</item>
         <item>Clase C 1 - Camiones hasta 12000kg</item>
         <item>Clase C 2 - Camiones hasta 24000kg</item>
-        <item>Clase C 3 - Camiones más de 24000kg</item>
+        <item>Clase C 3 - Camiones mas de 24000kg</item>
         <item>Clase D 1 - Transporte hasta 8 pasajeros</item>
         <item>Clase D 2 - Transporte hasta 20 pasajeros</item>
-        <item>Clase D 3 - Transporte más de 20 pasajeros</item>
-        <item>Clase D 4 - Vehículos de emergencia</item>
+        <item>Clase D 3 - Transporte mas de 20 pasajeros</item>
+        <item>Clase D 4 - Vehiculos de emergencia</item>
         <item>Clase E 1 - Camiones con remolque</item>
-        <item>Clase E 2 - Maquinaria especial no agrícola</item>
-        <item>Clase F - Vehículo adaptado</item>
-        <item>Clase G 1 - Tractores agrícolas</item>
-        <item>Clase G 2 - Maquinaria especial agrícola</item>
-        <item>Clase G 3 - Tren agrícola</item>
+        <item>Clase E 2 - Maquinaria especial no agricola</item>
+        <item>Clase F - Vehiculo adaptado</item>
+        <item>Clase G 1 - Tractores agricolas</item>
+        <item>Clase G 2 - Maquinaria especial agricola</item>
+        <item>Clase G 3 - Tren agricola</item>
     </string-array>
 
-    <string-array name="etilometros">
+    <string-array name="alcoholimetros">
         <item>SAFIR EVOLUTION - SESAH1R016002624</item>
         <item>SAFIR EVOLUTION - SESAH1Q111001627</item>
         <item>SAFIR EVOLUTION - SESAH1P319001342</item>
@@ -66,32 +66,32 @@
         <item>UT353 - C203115656</item>
     </string-array>
 
-    <string-array name="precintos_etilometro_1">
+    <string-array name="precintos_alcoholimetro_1">
         <item>B94097 (A)</item>
         <item>B94098 (A)</item>
         <item>B94099 (A)(Impresora)</item>
     </string-array>
 
-    <string-array name="precintos_etilometro_2">
+    <string-array name="precintos_alcoholimetro_2">
         <item>R7217 (A)</item>
         <item>R7218 (A)</item>
         <item>R7219 (A)(Impresora)</item>
     </string-array>
 
-    <string-array name="precintos_etilometro_3">
+    <string-array name="precintos_alcoholimetro_3">
         <item>R7214 (A)</item>
         <item>R7215 (A)</item>
         <item>R7216 (A)(Impresora)</item>
     </string-array>
 
-    <string-array name="precintos_etilometro_4">
+    <string-array name="precintos_alcoholimetro_4">
         <item>B94100 (A)</item>
         <item>B94101 (A)</item>
         <item>B94102 (A)(Impresora)</item>
     </string-array>
 
-    <!-- Información de calibración y características -->
-    <string name="etilometro_caracteristicas">Instrumento portátil con sensor infrarrojo</string>
-    <string name="etilometro_codigo_aprobacion">ET 10-2253</string>
-    <string name="decibelimetro_caracteristicas">Laboratorio de calibración: INTEGRAL INSTRUMENT</string>
+    <!-- Informacion de calibracion y caracteristicas -->
+    <string name="alcoholimetro_caracteristicas">Instrumento portatil con sensor infrarrojo</string>
+    <string name="alcoholimetro_codigo_aprobacion">ET 10-2253</string>
+    <string name="decibelimetro_caracteristicas">Laboratorio de calibracion: INTEGRAL INSTRUMENT</string>
 </resources>

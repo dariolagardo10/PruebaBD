@@ -10,7 +10,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
-    android:background="#FFFFFF">
+    android:descendantFocusability="blocksDescendants"
+    android:background="#FFFFFF"
+    >
+
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,6 +21,40 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- Barra superior con el botón de cerrar sesión -->
+        <!-- Barra superior con el botón de cerrar sesión -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="8dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <ImageButton
+                    android:id="@+id/btnCerrarSesion"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_lock_power_off"
+                    app:tint="#006B3F"
+                    android:padding="12dp"
+                    android:contentDescription="Cerrar sesión"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Cerrar sesión"
+                    android:textSize="12sp"
+                    android:textColor="#006B3F"/>
+
+            </LinearLayout>
+
+        </RelativeLayout>
         <!-- Header Section -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -41,7 +78,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="SERIE A - 2024"
+                android:text="SERIE A - 2025"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 android:textColor="#006B3F"
@@ -55,6 +92,9 @@
                 android:textColor="#006B3F"
                 android:gravity="center"
                 android:layout_marginBottom="16dp"/>
+
+
+
         </LinearLayout>
 
         <!-- Sección Conductor -->
@@ -79,13 +119,34 @@
             android:orientation="vertical"
             android:visibility="visible">
 
-            <Spinner
-                android:id="@+id/spinnerTipoDocumento"
+            <!-- Spinner Tipo Documento Modificado -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:background="@drawable/spinner_background"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="vertical"
+                android:padding="8dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/spinner_container_background">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Tipo de Documento"
+                    android:textColor="#006B3F"
+                    android:textSize="16sp"
+                    android:paddingBottom="4dp"/>
+
+                <Spinner
+                    android:id="@+id/spinnerTipoDocumento"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/spinner_background"
+                    android:layout_marginHorizontal="8dp"
+                    android:touchscreenBlocksFocus="true"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    />
+            </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -106,7 +167,7 @@
 
                 <Button
                     android:id="@+id/btnBuscarConductor"
-                    android:layout_width="wrap_content"
+                    android:layout_width="120dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:text="Buscar"
@@ -134,7 +195,7 @@
                 android:inputType="textPostalAddress"
                 android:minHeight="48dp"
                 android:padding="12dp"
-                android:enabled="false"
+                android:enabled="true"
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
@@ -150,16 +211,17 @@
                     android:layout_height="wrap_content"
                     android:hint="Localidad"
                     android:padding="8dp"
-                    android:minHeight="48dp"
-                    />
+                    android:minHeight="48dp"/>
 
                 <Button
                     android:id="@+id/btnBuscarLocalidad"
-                    android:layout_width="wrap_content"
+                    android:layout_width="120dp"
                     android:layout_height="wrap_content"
-                    android:text="Buscar" />
+                    android:text="Buscar"
+                    android:textColor="@color/white"
+                    android:background="@drawable/button_background"
+                    android:layout_marginStart="8dp"/>
             </LinearLayout>
-
 
             <EditText
                 android:id="@+id/etCodPostal"
@@ -205,13 +267,38 @@
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
-            <Spinner
-                android:id="@+id/spinnerClaseLicencia"
+            <!-- Spinner Clase Licencia Modificado -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:background="@drawable/spinner_background"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="vertical"
+                android:padding="8dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/spinner_container_background"
+                android:descendantFocusability="beforeDescendants">  <!-- Agregado -->
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Clase de Licencia"
+                    android:textColor="#006B3F"
+                    android:textSize="16sp"
+                    android:paddingBottom="4dp"/>
+
+                <Spinner
+                    android:id="@+id/spinnerClaseLicencia"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/spinner_background"
+                    android:layout_marginHorizontal="8dp"
+                    android:touchscreenBlocksFocus="true"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:overScrollMode="never"
+                android:nestedScrollingEnabled="false"
+                android:saveEnabled="false"/>
+            </LinearLayout>
+
             <EditText
                 android:id="@+id/etLicencia"
                 android:layout_width="match_parent"
@@ -235,8 +322,6 @@
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
 
-
-
             <EditText
                 android:id="@+id/etVencimiento"
                 android:layout_width="match_parent"
@@ -250,7 +335,6 @@
                 android:layout_marginBottom="16dp"/>
 
         </LinearLayout>
-
         <!-- Sección Vehículo -->
         <TextView
             android:id="@+id/tvVehiculo"
@@ -298,6 +382,27 @@
                     android:text="Buscar"/>
             </LinearLayout>
 
+            <!-- Agregar después del layout del conductor -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="8dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Conductor se dio a la fuga"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="8dp"/>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchFuga"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
             <EditText
                 android:id="@+id/etPropietario"
                 android:layout_width="match_parent"
@@ -315,7 +420,10 @@
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
                 android:background="@drawable/spinner_background"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginBottom="16dp"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                />
 
             <EditText
                 android:id="@+id/etOtraMarca"
@@ -345,7 +453,29 @@
                 android:layout_height="wrap_content"
                 android:minHeight="48dp"
                 android:background="@drawable/spinner_background"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginBottom="16dp"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="8dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Retención de licencia"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="8dp"/>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchRetencionLicencia"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
 
         </LinearLayout>
 
@@ -371,13 +501,34 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <Spinner
-                android:id="@+id/spinnerInfraccion"
+            <!-- Spinner Infracción Modificado -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:background="@drawable/spinner_background"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="vertical"
+                android:padding="8dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/spinner_container_background">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Seleccionar Infracción"
+                    android:textColor="#006B3F"
+                    android:textSize="16sp"
+                    android:paddingBottom="4dp"/>
+
+                <Spinner
+                    android:id="@+id/spinnerInfraccion"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/spinner_background"
+                    android:layout_marginHorizontal="8dp"
+                    android:touchscreenBlocksFocus="true"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/layoutInfraccionesSeleccionadas"
@@ -444,7 +595,6 @@
                 android:background="@drawable/edit_text_background"
                 android:layout_marginBottom="16dp"/>
         </LinearLayout>
-
         <!-- Sección Especificaciones -->
         <TextView
             android:id="@+id/tvEspecificaciones"
@@ -467,13 +617,34 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <Spinner
-                android:id="@+id/spinnerTipoEquipo"
+            <!-- Spinner Tipo Equipo Modificado -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:background="@drawable/spinner_background"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="vertical"
+                android:padding="8dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/spinner_container_background">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Tipo de Equipo"
+                    android:textColor="#006B3F"
+                    android:textSize="16sp"
+                    android:paddingBottom="4dp"/>
+
+                <Spinner
+                    android:id="@+id/spinnerTipoEquipo"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/spinner_background"
+                    android:layout_marginHorizontal="8dp"
+                    android:touchscreenBlocksFocus="true"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    />
+            </LinearLayout>
 
             <EditText
                 android:id="@+id/etEquipo"
@@ -631,7 +802,7 @@
             android:id="@+id/btnInsertarConductor"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Insertar Datos del Conductor"
+            android:text="Finalizar Acta"
             android:textColor="@color/white"
             android:background="@drawable/button_background"
             android:minHeight="56dp"
@@ -666,6 +837,8 @@
             android:layout_width="match_parent"
             android:layout_height="200dp"/>
     </LinearLayout>
+
+
 
 </ScrollView>
     <!-- Nuevo loading overlay -->

@@ -11,6 +11,7 @@ import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.text.InputType;
 import android.util.Base64;
 import android.util.Log;
 import org.json.JSONException;
@@ -48,6 +49,7 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Base64;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -66,6 +68,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
@@ -118,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private Button btnBuscarConductor;
-
+    private ImageButton btnCerrarSesion;
     private boolean firmaEstaCargada = false;
     private ProgressDialog loadingDialog;
     private EditText spinnerExpedidaPor;
@@ -143,6 +146,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton[] closeButtons = new ImageButton[2];
 
     private EditText etClase;
+    private SwitchCompat switchRetencionLicencia;
     private EditText etVencimiento;
     private LocationManager locationManager;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1000;
@@ -191,6 +195,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnBuscarLocalidad;
     private Map<String, String> infraccionIdMap = new HashMap<>();
     private Bitmap firmaProcesada = null;
+    private SwitchCompat switchFuga;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -231,6 +236,7 @@ public class MainActivity extends AppCompatActivity {
         // Configurar componentes adicionales
         setupAdditionalComponents();
         setupVehiculoSearch();
+        setupValorMedidoFormat();
     }
 
     private byte[] comandoFirma = null; // Agregar esta variable en la clase
@@ -389,6 +395,51 @@ public class MainActivity extends AppCompatActivity {
         actualizarBotonTomarFoto();
     }
 
+    private void mostrarDialogoCerrarSesion() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Cerrar Sesión");
+        builder.setMessage("¿Está seguro que desea cerrar sesión?");
+        builder.setPositiveButton("Sí", (dialog, which) -> {
+            // Si hay datos sin guardar, mostrar advertencia
+            if (hayDatosSinGuardar()) {
+                mostrarDialogoConfirmacionCierre();
+            } else {
+                cerrarSesion();
+            }
+        });
+        builder.setNegativeButton("No", (dialog, which) -> dialog.dismiss());
+        builder.show();
+    }
+
+    private boolean hayDatosSinGuardar() {
+        // Verificar si hay datos en los campos principales
+        return !TextUtils.isEmpty(etNumeroDocumento.getText()) ||
+                !TextUtils.isEmpty(etDominio.getText()) ||
+                !TextUtils.isEmpty(etLugar.getText()) ||
+                !infraccionesSeleccionadas.isEmpty();
+    }
+
+    private void mostrarDialogoConfirmacionCierre() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Datos sin guardar");
+        builder.setMessage("Hay datos sin guardar. ¿Está seguro que desea cerrar sesión? Se perderán todos los datos no guardados.");
+        builder.setPositiveButton("Sí, cerrar sesión", (dialog, which) -> cerrarSesion());
+        builder.setNegativeButton("No, continuar editando", (dialog, which) -> dialog.dismiss());
+        builder.show();
+    }
+
+    private void cerrarSesion() {
+        // Limpiar datos de sesión
+        limpiarCampos();
+
+        // Crear intent para volver a la pantalla de login
+        Intent intent = new Intent(this, LoginActivity.class);
+        // Limpiar el stack de actividades para que no se pueda volver atrás
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
     private void setupAdditionalComponents() {
         // Configurar spinner de infracciones
         if (spinnerInfraccion != null) {
@@ -433,13 +484,19 @@ public class MainActivity extends AppCompatActivity {
 
     // Modificación del método initializeViews para incluir todas las vistas necesarias
     private void initializeViews() {
+        btnCerrarSesion = findViewById(R.id.btnCerrarSesion);
+        btnCerrarSesion.setOnClickListener(v -> mostrarDialogoCerrarSesion());
+        switchRetencionLicencia = findViewById(R.id.switchRetencionLicencia);
         // Progress y Loading
+        switchFuga = findViewById(R.id.switchFuga);
+
         spinnerClaseLicencia = findViewById(R.id.spinnerClaseLicencia);
         progressBar = findViewById(R.id.progressBar);
         loadingOverlay = findViewById(R.id.loadingOverlay);
         // Inicializar vistas
         etNumeroDocumento = findViewById(R.id.etNumeroDocumento);
         etApellidoNombre = findViewById(R.id.etApellidoNombre);
+        etApellidoNombre.setEnabled(true);
         etDomicilio = findViewById(R.id.etDomicilio);
         spinnerTipoDocumento = findViewById(R.id.spinnerTipoDocumento);
         btnBuscarConductor = findViewById(R.id.btnBuscarConductor);
@@ -475,6 +532,7 @@ public class MainActivity extends AppCompatActivity {
         actvDepartamento = findViewById(R.id.actvDepartamento);
         actvLocalidad = findViewById(R.id.actvLocalidad);
         etApellidoNombre = findViewById(R.id.etApellidoNombre);
+        etApellidoNombre.setEnabled(true);
         etDomicilio = findViewById(R.id.etDomicilio);
         etCodPostal = findViewById(R.id.etCodPostal);
 
@@ -508,6 +566,54 @@ public class MainActivity extends AppCompatActivity {
         tvHecho = findViewById(R.id.tvHecho);
         tvNumero = findViewById(R.id.tvNumero);
         tvEspecificaciones = findViewById(R.id.tvEspecificaciones);
+    }
+
+    private void setupValorMedidoFormat() {
+        if (etValorCinemometro != null) {
+            etValorCinemometro.addTextChangedListener(new TextWatcher() {
+                private String current = "";
+                private boolean isUpdating = false;
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (isUpdating) {
+                        return;
+                    }
+
+                    String str = s.toString().replaceAll("[^\\d.]", "");
+                    if (str.isEmpty()) {
+                        return;
+                    }
+
+                    isUpdating = true;
+
+                    // Manejar el punto decimal
+                    if (str.contains(".")) {
+                        String[] parts = str.split("\\.");
+                        if (parts.length > 1) {
+                            // Limitar a dos decimales
+                            if (parts[1].length() > 2) {
+                                parts[1] = parts[1].substring(0, 2);
+                            }
+                            str = parts[0] + "." + parts[1];
+                        }
+                    }
+
+                    etValorCinemometro.setText(str);
+                    etValorCinemometro.setSelection(str.length());
+
+                    isUpdating = false;
+                }
+            });
+        }
     }
     private void buscarConductor() {
         String dni = etNumeroDocumento.getText().toString().trim();
@@ -562,6 +668,7 @@ public class MainActivity extends AppCompatActivity {
     private void llenarDatosConductor(RespuestaBuscarConductor.ConductorData data) {
         if (data != null) {
             etApellidoNombre.setText(data.getApellidoNombre());
+            etApellidoNombre.setEnabled(true);
             etDomicilio.setText(data.getDomicilio());
             // Seleccionar "DNI" en el spinner
             int position = ((ArrayAdapter)spinnerTipoDocumento.getAdapter())
@@ -826,8 +933,8 @@ public class MainActivity extends AppCompatActivity {
         etMunicipioMulta.setText("Posadas");
 
         // Hacer que los campos de departamento y municipio no sean editables
-        etDepartamentoMulta.setEnabled(true);
-        etMunicipioMulta.setEnabled(true);
+        etDepartamentoMulta.setEnabled(false);
+        etMunicipioMulta.setEnabled(false);
     }
 
     private void setupLocalidadAutoComplete() {
@@ -981,6 +1088,15 @@ public class MainActivity extends AppCompatActivity {
         setupExpedidoPorSpinner();
         setupEquipoMedicionSpinner();
         setupClaseLicenciaSpinner();
+
+        // Añadir OnTouchListener a cada spinner
+        addTouchListenerToSpinner(spinnerTipoDocumento);
+        addTouchListenerToSpinner(spinnerClaseLicencia);
+        addTouchListenerToSpinner(spinnerMarca);
+        addTouchListenerToSpinner(spinnerTipoVehiculo);
+        addTouchListenerToSpinner(spinnerInfraccion);
+        addTouchListenerToSpinner(spinnerTipoEquipo);
+
         ArrayAdapter<CharSequence> adapterTipoEquipo = ArrayAdapter.createFromResource(this,
                 R.array.tipos_equipo, android.R.layout.simple_spinner_item);
         adapterTipoEquipo.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -988,11 +1104,47 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void addTouchListenerToSpinner(Spinner spinner) {
+        if (spinner != null) {
+            spinner.setOnTouchListener(new View.OnTouchListener() {
+                private long lastClickTime = 0;
+                private static final long CLICK_TIME_THRESHOLD = 300;
+                private float startY;
+
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            startY = event.getY();
+                            long clickTime = System.currentTimeMillis();
+                            if (clickTime - lastClickTime < CLICK_TIME_THRESHOLD) {
+                                return true;
+                            }
+                            lastClickTime = clickTime;
+                            break;
+                        case MotionEvent.ACTION_UP:
+                            float endY = event.getY();
+                            float deltaY = Math.abs(endY - startY);
+                            // Si el movimiento vertical es significativo, no abrir el spinner
+                            if (deltaY > 50) {
+                                return true;
+                            }
+                            break;
+                    }
+                    return false;
+                }
+            });
+        }
+    }
+
+
     private void setupClaseLicenciaSpinner() {
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
                 R.array.clases_licencia, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerClaseLicencia.setAdapter(adapter);
+        spinnerClaseLicencia.setFocusable(false);
+        spinnerClaseLicencia.setFocusableInTouchMode(false);
 
         // Opcional: manejar la selección
         spinnerClaseLicencia.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -1013,6 +1165,8 @@ public class MainActivity extends AppCompatActivity {
                 R.array.tipo_documento_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTipoDocumento.setAdapter(adapter);
+        spinnerTipoDocumento.setFocusable(false);
+        spinnerTipoDocumento.setFocusableInTouchMode(false);
     }
 
     private void setupMarcaSpinner() {
@@ -1021,6 +1175,8 @@ public class MainActivity extends AppCompatActivity {
                 Collections.singletonList("Cargando marcas..."));
         loadingAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerMarca.setAdapter(loadingAdapter);
+        spinnerMarca.setFocusable(false);
+        spinnerMarca.setFocusableInTouchMode(false);
 
         // Llama a la función para cargar las marcas
         cargarMarcas();
@@ -1076,6 +1232,8 @@ public class MainActivity extends AppCompatActivity {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, tiposVehiculo);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTipoVehiculo.setAdapter(adapter);
+        spinnerTipoVehiculo.setFocusable(false);
+        spinnerTipoVehiculo.setFocusableInTouchMode(false);
     }
 
     private void setupInfraccionSpinner() {
@@ -1084,7 +1242,8 @@ public class MainActivity extends AppCompatActivity {
                 Collections.singletonList("Cargando infracciones..."));
         loadingAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerInfraccion.setAdapter(loadingAdapter);
-
+        spinnerInfraccion.setFocusable(false);
+        spinnerInfraccion.setFocusableInTouchMode(false);
         // Llama a la API para obtener las infracciones
         Call<RespuestaInfracciones> call = apiService.obtenerInfracciones("obtenerInfracciones");
         call.enqueue(new Callback<RespuestaInfracciones>() {
@@ -1110,7 +1269,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
     private void actualizarSpinnerInfracciones(List<RespuestaInfracciones.Infraccion> infracciones) {
         // Limpiar y reinicializar las listas
         todasLasInfracciones.clear();
@@ -1120,19 +1278,27 @@ public class MainActivity extends AppCompatActivity {
         // Agregar el item por defecto
         infraccionesDisponibles.add("Seleccione una infracción");
 
+        // Ordenar la lista de infracciones por ID
+        Collections.sort(infracciones, (a, b) -> {
+            // Convertir IDs a enteros para ordenación numérica
+            int idA = Integer.parseInt(a.getId());
+            int idB = Integer.parseInt(b.getId());
+            return idA - idB;
+        });
+
         // Poblar las listas y el map
         for (RespuestaInfracciones.Infraccion infraccion : infracciones) {
-            String descripcion = infraccion.getDescripcion();
-            todasLasInfracciones.add(descripcion);
-            infraccionesDisponibles.add(descripcion);
-            infraccionIdMap.put(descripcion, infraccion.getId());
+            // Crear cadena con formato "ID - Descripción"
+            String descripcionCompleta = String.format("%s - %s", infraccion.getId(), infraccion.getDescripcion());
+            todasLasInfracciones.add(descripcionCompleta);
+            infraccionesDisponibles.add(descripcionCompleta);
+            infraccionIdMap.put(descripcionCompleta, infraccion.getId());
         }
 
         actualizarAdapterInfracciones();
 
         Log.d("DEBUG", "Infracciones cargadas: " + infraccionesDisponibles);
     }
-
     private void actualizarAdapterInfracciones() {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item,
@@ -1144,6 +1310,8 @@ public class MainActivity extends AppCompatActivity {
     private void setupExpedidoPorSpinner() {
         if (spinnerExpedidaPor != null) {
             spinnerExpedidaPor.setText("Posadas");
+            spinnerExpedidaPor.setFocusable(false);
+            spinnerExpedidaPor.setFocusableInTouchMode(false);
         }
     }
 
@@ -1596,13 +1764,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void imprimirMulta() {
-        Log.d("ImpresionMulta", "Iniciando impresión de multa");
-        if (bluetoothSocket == null || !bluetoothSocket.isConnected()) {
-            mostrarMensaje("No hay conexión con la impresora");
-            return;
-        }
 
+        int lineWidth = 32; // Caracteres por línea para 57mm
         try {
+
+
             outputStream = bluetoothSocket.getOutputStream();
             Log.d("ImpresionMulta", "OutputStream obtenido");
 
@@ -1611,7 +1777,10 @@ public class MainActivity extends AppCompatActivity {
             outputStream.write(new byte[]{0x1B, 0x4D, 0x01}); // Fuente pequeña
             Log.d("ImpresionMulta", "Impresora inicializada");
 
-            int lineWidth = 32; // Caracteres por línea para 57mm
+            // Imprimir encabezado del ticket de retención
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+
+
 
             // Obtener la fecha y hora actual
             Calendar calendar = Calendar.getInstance();
@@ -1626,7 +1795,7 @@ public class MainActivity extends AppCompatActivity {
             printPhoto(R.drawable.logos8);
 
             Log.d("ImpresionMulta", "Imprimiendo encabezado");
-            imprimirCampoEnLinea("SERIE A - 2024", "", lineWidth);
+            imprimirCampoEnLinea("SERIE A - 2025", "", lineWidth);
             imprimirCampoEnLinea("", "", lineWidth);
 
             // Imprimir información básica
@@ -1688,7 +1857,7 @@ public class MainActivity extends AppCompatActivity {
                 printNewLine();
             }
             // Imprimir sección vehículo (siempre obligatoria)
-            Log.d("ImpresionMulta", "Imprimiendo sección vehículo");
+            Log.d("ImpresionMulta", "Imprimiendo seccion vehiculo");
             printNewLine();
             imprimirCampoEnLinea("VEHICULO", "", lineWidth);
             printNewLine();
@@ -1712,10 +1881,10 @@ public class MainActivity extends AppCompatActivity {
                 imprimirCampoEnLinea("- ", infraccion, lineWidth);
             }
             imprimirCampoEnLinea("Lugar: ", etLugar.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Departamento Multa: ", etDepartamentoMulta.getText().toString(), lineWidth);
-            imprimirCampoEnLinea("Municipio Multa: ", etMunicipioMulta.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Departamento : ", etDepartamentoMulta.getText().toString(), lineWidth);
+            imprimirCampoEnLinea("Municipio : ", etMunicipioMulta.getText().toString(), lineWidth);
             if (!TextUtils.isEmpty(etMultaInfo.getText())) {
-                imprimirCampoEnLinea("Info Multa: ", etMultaInfo.getText().toString(), lineWidth);
+                imprimirCampoEnLinea("Observacion: ", etMultaInfo.getText().toString(), lineWidth);
             }
             printNewLine();
 
@@ -1775,6 +1944,39 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Legajo: ", legajoInspector, lineWidth);
             printNewLine();
 
+
+            String dni2 = etNumeroDocumento.getText().toString().trim();
+            // Modificar el método imprimirMulta() para incluir la verificación de fuga
+            if (switchFuga.isChecked()) {
+                // Caso de fuga
+                String dominio = etDominio.getText().toString().trim();
+                if (!dominio.isEmpty()) {
+                    imprimirCampoEnLinea("CONSTE: El conductor del vehiculo dominio " + dominio +
+                            " no presento la documentacion requerida al momento de ser solicitado por el inspector. " +
+                            "", "", lineWidth);
+                } else {
+                    // No permitir continuar si no hay dominio
+                    mostrarError("No se puede labrar el acta sin el dominio del vehículo");
+                    return;
+                }
+            } else if (dni2.isEmpty() || dni2.equals("00000000")) {
+                // Caso donde se niega a identificarse
+                String dominio = etDominio.getText().toString().trim();
+                if (!dominio.isEmpty()) {
+                    imprimirCampoEnLinea("CONSTE: El conductor del vehiculo dominio " + dominio +
+                            " se niega a identificarse y/o presentar documentacion. " +
+                            "", "", lineWidth);
+                } else {
+                    mostrarError("No se puede labrar el acta sin el dominio del vehiculo");
+                    return;
+                }
+            }
+            Log.d("ImpresionMulta", "Iniciando impresión de multa");
+            if (bluetoothSocket == null || !bluetoothSocket.isConnected()) {
+                mostrarMensaje("No hay conexión con la impresora");
+                return;
+            }
+
             // Imprimir firma
             outputStream.write(PrinterCommands.FEED_LINE);
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
@@ -1785,6 +1987,13 @@ public class MainActivity extends AppCompatActivity {
             imprimirFirma(urlFirma, lineWidth);
 
             outputStream.write(PrinterCommands.ESC_ALIGN_LEFT);
+            outputStream.write(PrinterCommands.FEED_LINE);
+
+            // Añadir después de la firma del inspector
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+            imprimirCampoEnLinea("DECLARACION", "", lineWidth);
+            outputStream.write(PrinterCommands.FEED_LINE);
+
             outputStream.write(PrinterCommands.FEED_LINE);
 
             // Imprimir texto final
@@ -1798,12 +2007,75 @@ public class MainActivity extends AppCompatActivity {
             outputStream.flush();
             mostrarMensaje("Multa impresa con éxito");
 
+            if (switchRetencionLicencia.isChecked()) {
+                // Agregar espacio entre tickets
+                outputStream.write(PrinterCommands.FEED_LINE);
+                outputStream.write(PrinterCommands.FEED_LINE);
+
+                // Imprimir el ticket de retención
+                imprimirTicketRetencion();
+            }
+
         } catch (IOException e) {
             Log.e("ImpresionMulta", "Error al imprimir: " + e.getMessage(), e);
             mostrarMensaje("Error al imprimir: " + e.getMessage());
         }
-    }
 
+        imprimirCampoEnLinea("Consulta y abona tu infraccion escaneando el siguiente QR a partir de 24 horas de labrada.", "", lineWidth);
+        printPhoto(R.drawable.qr);
+        imprimirCampoEnLinea("\n", "", lineWidth);
+        imprimirCampoEnLinea("\n", "", lineWidth);
+
+
+    }
+    private void imprimirTicketRetencion() throws IOException {
+        int lineWidth = 32; // Caracteres por línea para 57mm
+
+        // Imprimir encabezado del ticket de retención
+        outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+        printPhoto(R.drawable.logos8);
+
+        imprimirCampoEnLinea("SERIE A - 2025", "", lineWidth);
+        imprimirCampoEnLinea("BOLETA DE CITACION DEL CONDUCTOR", "", lineWidth);
+        imprimirCampoEnLinea("Numero Acta " + obtenerActaIdActual(), "", lineWidth);
+
+        // Datos del conductor
+        outputStream.write(PrinterCommands.ESC_ALIGN_LEFT);
+        imprimirCampoEnLinea("DNI: ", etNumeroDocumento.getText().toString(), lineWidth);
+        imprimirCampoEnLinea("APELLIDO Y NOMBRE: ", etApellidoNombre.getText().toString(), lineWidth);
+        imprimirCampoEnLinea("DOMICILIO: ", etDomicilio.getText().toString(), lineWidth);
+        imprimirCampoEnLinea("LICENCIA DE CONDUCIR: ", etLicencia.getText().toString(), lineWidth);
+
+        // Fecha y hora
+        String fecha = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
+        String hora = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
+        imprimirCampoEnLinea("FECHA: ", fecha, lineWidth);
+        imprimirCampoEnLinea("HORA: ", hora, lineWidth);
+
+        // Texto legal
+        outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+        imprimirCampoEnLinea("SE PROCEDE A LA RETENCION DE LA LICENCIA DE CONDUCIR DEBIENDO PRESENTARSE DENTRO DE LAS 72HS EN EL TRIBUNAL MUNICIPAL DE FALTAS.", "", lineWidth);
+
+        // Firmas
+        outputStream.write(PrinterCommands.FEED_LINE);
+       // imprimirCampoEnLinea("FIRMA DEL CONDUCTOR", "", lineWidth);
+        outputStream.write(PrinterCommands.FEED_LINE);
+        outputStream.write(PrinterCommands.FEED_LINE);
+      //  imprimirCampoEnLinea("FIRMA DEL INSPECTOR", "", lineWidth);
+
+        // Cortar papel
+        outputStream.write(PrinterCommands.FEED_LINE);
+        outputStream.write(PrinterCommands.FEED_LINE);
+        outputStream.write(PrinterCommands.FEED_LINE);
+        outputStream.write(new byte[]{0x1D, 0x56, 0x01}); // Corte parcial
+
+      //  imprimirCampoEnLinea("Consulta y abona tu infraccion escaneando el siguiente QR.", "", lineWidth);
+
+
+        imprimirCampoEnLinea("\n", "", lineWidth);
+        imprimirCampoEnLinea("\n", "", lineWidth);
+
+    }
     private String obtenerUrlFirma(String legajo) {
         return "https://systemposadas.com/test_firma.php?legajo=" + legajo;
     }
@@ -2217,6 +2489,8 @@ public class MainActivity extends AppCompatActivity {
                 R.array.tipos_equipo, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerTipoEquipo.setAdapter(adapter);
+        spinnerTipoEquipo.setFocusable(false);
+        spinnerTipoEquipo.setFocusableInTouchMode(false);
 
         spinnerTipoEquipo.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -2251,46 +2525,161 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
     }
+
     private void autocompletarEquipoMedicion(String tipoEquipo) {
         Log.d("EquipoMedicion", "Autocompleting para: " + tipoEquipo);
         runOnUiThread(() -> {
             switch (tipoEquipo) {
-                case "Etilometro":
-                    Toast.makeText(this, "Seleccionado: Etilometro", Toast.LENGTH_SHORT).show();
-                    if (etEquipo != null) etEquipo.setText("Etilometro con dispositivo impresor");
-                    if (etMarcaCinemometro != null) etMarcaCinemometro.setText("ACS");
-                    if (etModeloCinemometro != null) etModeloCinemometro.setText("SAFIR EVOLUTION");
-                    if (etCodAprobacionCinemometro != null) etCodAprobacionCinemometro.setText("ET 10-2253");
-                    if (etValorCinemometro != null) etValorCinemometro.setText("");
+                case "Alcoholimetro":
+                    Toast.makeText(this, "Seleccionado: Alcoholimetro", Toast.LENGTH_SHORT).show();
+                    if (etEquipo != null) {
+                        etEquipo.setText("Alcoholimetro con dispositivo impresor");
+                        etEquipo.setEnabled(false);
+                    }
+                    if (etMarcaCinemometro != null) {
+                        etMarcaCinemometro.setText("ACS");
+                        etMarcaCinemometro.setEnabled(false);
+                    }
+                    if (etModeloCinemometro != null) {
+                        etModeloCinemometro.setText("SAFIR EVOLUTION");
+                        etModeloCinemometro.setEnabled(false);
+                    }
+                    if (etCodAprobacionCinemometro != null) {
+                        etCodAprobacionCinemometro.setText("ET 10-2253");
+                        etCodAprobacionCinemometro.setEnabled(false);
+                    }
+                    if (etValorCinemometro != null) {
+                        etValorCinemometro.setText("");
+                        etValorCinemometro.setEnabled(true);
+
+                        // Remover TextWatcher anterior si existe
+                        TextWatcher[] watchers = (TextWatcher[]) etValorCinemometro.getTag();
+                        if (watchers != null) {
+                            for (TextWatcher watcher : watchers) {
+                                etValorCinemometro.removeTextChangedListener(watcher);
+                            }
+                        }
+                        // Agregar nuevo TextWatcher simple
+                        TextWatcher watcher = new TextWatcher() {
+                            private boolean isUpdating = false;
+
+                            @Override
+                            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                            @Override
+                            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                            @Override
+                            public void afterTextChanged(Editable s) {
+                                if (isUpdating) return;
+                                isUpdating = true;
+
+                                String input = s.toString();
+                                if (!input.isEmpty() && !input.equals(".")) {
+                                    try {
+                                        double value = Double.parseDouble(input);
+                                        if (value > 4.99) {
+                                            s.clear();
+                                            s.append("4.99");
+                                        }
+                                    } catch (NumberFormatException e) {
+                                        s.clear();
+                                    }
+                                }
+
+                                isUpdating = false;
+                            }
+                        };
+
+                        etValorCinemometro.addTextChangedListener(watcher);
+                        etValorCinemometro.setTag(new TextWatcher[]{watcher});
+                        etValorCinemometro.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                    }
                     mostrarDialogoSeleccionModelo();
+                    // Ya no deshabilitamos el spinnerTipoEquipo aquí
                     break;
 
                 case "Decibelimetro":
                     Toast.makeText(this, "Seleccionado: Decibelimetro", Toast.LENGTH_SHORT).show();
-                    if (etEquipo != null) etEquipo.setText("Decibelimetro");
-                    if (etMarcaCinemometro != null) etMarcaCinemometro.setText("Uni-T");
-                    if (etModeloCinemometro != null) etModeloCinemometro.setText("UT353");
-                    if (etSerieCinemometro != null) etSerieCinemometro.setText("C203115656 (96697)");
-                    if (etCodAprobacionCinemometro != null) etCodAprobacionCinemometro.setText("C12122301");
-                    if (etValorCinemometro != null) etValorCinemometro.setText("");
-                    break;
+                    if (etEquipo != null) {
+                        etEquipo.setText("Decibelimetro");
+                        etEquipo.setEnabled(false);
+                    }
+                    if (etMarcaCinemometro != null) {
+                        etMarcaCinemometro.setText("Uni-T");
+                        etMarcaCinemometro.setEnabled(false);
+                    }
+                    if (etModeloCinemometro != null) {
+                        etModeloCinemometro.setText("UT353");
+                        etModeloCinemometro.setEnabled(false);
+                    }
+                    if (etSerieCinemometro != null) {
+                        etSerieCinemometro.setText("C203115656 (96697)");
+                        etSerieCinemometro.setEnabled(false);
+                    }
+                    if (etCodAprobacionCinemometro != null) {
+                        etCodAprobacionCinemometro.setText("C12122301");
+                        etCodAprobacionCinemometro.setEnabled(false);
+                    }
+                    if (etValorCinemometro != null) {
+                        etValorCinemometro.setText("");
+                        etValorCinemometro.setEnabled(true);
 
+                        TextWatcher[] watchers = (TextWatcher[]) etValorCinemometro.getTag();
+                        if (watchers != null) {
+                            for (TextWatcher watcher : watchers) {
+                                etValorCinemometro.removeTextChangedListener(watcher);
+                            }
+                        }
 
-                case "Seleccione un tipo":
-                default:
-                   // limpiarCamposEquipoMedicion();
+                        TextWatcher watcher = new TextWatcher() {
+                            private boolean isUpdating = false;
+
+                            @Override
+                            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                            @Override
+                            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+                            @Override
+                            public void afterTextChanged(Editable s) {
+                                if (isUpdating) return;
+                                isUpdating = true;
+
+                                String input = s.toString().replace(" dB", "");
+                                if (!input.isEmpty() && !input.equals(".")) {
+                                    try {
+                                        double value = Double.parseDouble(input);
+                                        if (value > 120) {
+                                            input = "120";
+                                        }
+                                        s.clear();
+                                        s.append(input + " dB");
+                                    } catch (NumberFormatException e) {
+                                        s.clear();
+                                    }
+                                }
+
+                                isUpdating = false;
+                            }
+                        };
+
+                        etValorCinemometro.addTextChangedListener(watcher);
+                        etValorCinemometro.setTag(new TextWatcher[]{watcher});
+                        etValorCinemometro.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                    }
+                    // Ya no deshabilitamos el spinnerTipoEquipo aquí tampoco
                     break;
             }
         });
     }
-
 
     private void mostrarDialogoSeleccionModelo() {
         runOnUiThread(() -> {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Seleccione el modelo específico");
 
-            final String[] modelos = getResources().getStringArray(R.array.etilometros);
+            final String[] modelos = getResources().getStringArray(R.array.alcoholimetros);
 
             builder.setItems(modelos, (dialog, which) -> {
                 String modeloSeleccionado = modelos[which];
@@ -2710,8 +3099,21 @@ public class MainActivity extends AppCompatActivity {
             conectarEImprimir(true); // true indica primera impresión
         });
         builder.setNegativeButton("No", (dialog, which) -> {
-            dialog.dismiss();
-            limpiarCampos();
+            // En lugar de limpiar directamente, mostrar diálogo de confirmación
+            AlertDialog.Builder confirmBuilder = new AlertDialog.Builder(this);
+            confirmBuilder.setTitle("Confirmar");
+            confirmBuilder.setMessage("¿Está seguro que no desea imprimir la multa? Esta acción no se puede deshacer.");
+            confirmBuilder.setPositiveButton("Sí, no imprimir", (dialogConfirm, whichConfirm) -> {
+                dialogConfirm.dismiss();
+                limpiarCampos();
+            });
+            confirmBuilder.setNegativeButton("No, volver a imprimir", (dialogConfirm, whichConfirm) -> {
+                dialogConfirm.dismiss();
+                // Volver a mostrar el diálogo de impresión
+                mostrarDialogoImpresion();
+            });
+            confirmBuilder.setCancelable(false);
+            confirmBuilder.show();
         });
         builder.setCancelable(false);
         builder.show();
@@ -2961,7 +3363,6 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 }
-
                 if (response.isSuccessful() && response.body() != null) {
                     RespuestaVehiculo respuesta = response.body();
                     Log.d("DEBUG", "Respuesta recibida: " + new Gson().toJson(respuesta));
@@ -3010,6 +3411,13 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
 
+                            // Deshabilitar todos los campos después de encontrar el vehículo
+                            etPropietario.setEnabled(true);
+                            spinnerMarca.setEnabled(true);
+                            etOtraMarca.setEnabled(true);
+                            etModeloVehiculo.setEnabled(true);
+                            spinnerTipoVehiculo.setEnabled(true);
+
                             mostrarMensaje("Vehículo encontrado");
                         });
                     } else {
@@ -3038,6 +3446,20 @@ public class MainActivity extends AppCompatActivity {
         etOtraMarca.setText("");
         etModeloVehiculo.setText("");
         spinnerTipoVehiculo.setSelection(0);
+
+        // Volver a habilitar todos los campos
+        etPropietario.setEnabled(true);
+        etDominio.setEnabled(true);
+        spinnerMarca.setEnabled(true);
+        etOtraMarca.setEnabled(true);
+        etModeloVehiculo.setEnabled(true);
+        spinnerTipoVehiculo.setEnabled(true);
+
+        etPropietario.setText("");
+        spinnerMarca.setSelection(0);
+        etOtraMarca.setText("");
+        etModeloVehiculo.setText("");
+        spinnerTipoVehiculo.setSelection(0);
     }
 
     // Método auxiliar para finalizar el proceso
@@ -3053,7 +3475,41 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    private void actualizarSugerenciasLocalidad(List<RespuestaInfoLocalidad.InfoLocalidad> infoLocalidades) {
+        Log.d("MainActivity", "Actualizando sugerencias con " + infoLocalidades.size() + " localidades");
+        runOnUiThread(() -> {
+            if (!infoLocalidades.isEmpty()) {
+                RespuestaInfoLocalidad.InfoLocalidad info = infoLocalidades.get(0);
 
+                // Establecer valores
+                etCodPostal.setText(info.getCodigoPostal());
+                actvDepartamento.setText(info.getDepartamento());
+                etProvincia.setText(info.getProvincia());
+                etPais.setText(info.getPais());
+
+                // Deshabilitar los campos para que queden fijos
+                etCodPostal.setEnabled(true);
+                actvDepartamento.setEnabled(true);
+                etProvincia.setEnabled(true);
+                etPais.setEnabled(true);
+
+                Log.d("MainActivity", "Campos actualizados con la información de: " + info.getLocalidad());
+            } else {
+                Log.d("MainActivity", "No se encontraron localidades para actualizar");
+
+                // Limpiar y habilitar campos si no hay resultados
+                etCodPostal.setText("");
+                actvDepartamento.setText("");
+                etProvincia.setText("");
+                etPais.setText("");
+
+                etCodPostal.setEnabled(true);
+                actvDepartamento.setEnabled(true);
+                etProvincia.setEnabled(true);
+                etPais.setEnabled(true);
+            }
+        });
+    }
     private void mostrarMensaje(final String mensaje) {
         try {
             runOnUiThread(() -> {
@@ -3076,6 +3532,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void limpiarCampos() {
+        switchFuga.setChecked(false);
+        switchRetencionLicencia.setChecked(false);
+        if (etCodPostal != null) {
+            etCodPostal.setEnabled(true);
+        }
+        if (actvDepartamento != null) {
+            actvDepartamento.setEnabled(true);
+        }
+        if (etProvincia != null) {
+            etProvincia.setEnabled(true);
+        }
+        if (etPais != null) {
+            etPais.setEnabled(true);
+        }
+
         runOnUiThread(() -> {
             // Limpiar imágenes
             imagenBase64List.clear();
@@ -3120,6 +3591,7 @@ public class MainActivity extends AppCompatActivity {
 
             // Restablecer spinners
             if (spinnerTipoDocumento != null) spinnerTipoDocumento.setSelection(0);
+            if(spinnerClaseLicencia != null) spinnerClaseLicencia.setSelection(0);
             if (spinnerMarca != null) spinnerMarca.setSelection(0);
             if (spinnerTipoVehiculo != null) spinnerTipoVehiculo.setSelection(0);
             if (spinnerInfraccion != null) spinnerInfraccion.setSelection(0);
@@ -3312,21 +3784,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    private void actualizarSugerenciasLocalidad(List<RespuestaInfoLocalidad.InfoLocalidad> infoLocalidades) {
-        Log.d("MainActivity", "Actualizando sugerencias con " + infoLocalidades.size() + " localidades");
-        runOnUiThread(() -> {
-            if (!infoLocalidades.isEmpty()) {
-                RespuestaInfoLocalidad.InfoLocalidad info = infoLocalidades.get(0);
-                etCodPostal.setText(info.getCodigoPostal());
-                actvDepartamento.setText(info.getDepartamento());
-                etProvincia.setText(info.getProvincia());
-                etPais.setText(info.getPais());
-                Log.d("MainActivity", "Campos actualizados con la información de: " + info.getLocalidad());
-            } else {
-                Log.d("MainActivity", "No se encontraron localidades para actualizar");
-            }
-        });
-    }
+
 
     private void actualizarSpinnerTiposVehiculo(List<RespuestaTiposVehiculo.TipoVehiculo> tiposVehiculo) {
         List<String> descripcionesTiposVehiculo = new ArrayList<>();

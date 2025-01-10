@@ -48,7 +48,7 @@ dependencies {
     implementation ("com.google.android.gms:play-services-location:17.0.0")
     // Si no tienes esta dependencia para JSON, puedes añadirla
     implementation ("com.google.code.gson:gson:2.8.8")
-
+    implementation ("com.google.android.material:material:1.5.0")
     implementation ("androidx.appcompat:appcompat:1.3.1")
     implementation ("androidx.core:core-ktx:1.6.0")
     implementation ("com.google.android.material:material:1.4.0")
