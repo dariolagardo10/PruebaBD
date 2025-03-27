@@ -136,6 +136,14 @@ public interface OracleApiService {
 
     @FormUrlEncoded
     @POST("Conductor_Api.php")
+    Call<RespuestaSubirFirma> subirFirmaInfractor(
+            @Field("accion") String accion,
+            @Field("actaId") String actaId,
+            @Field("firma") String firmaBase64
+    );
+
+    @FormUrlEncoded
+    @POST("Conductor_Api.php")
     Call<RespuestaMarcas> obtenerMarcas(@Field("accion") String accion);
 
     @FormUrlEncoded

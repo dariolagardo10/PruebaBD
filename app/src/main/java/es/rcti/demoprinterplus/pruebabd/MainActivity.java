@@ -116,11 +116,13 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
 
-
     // Declaración de vistas
-
+    private Bitmap infractorSignatureBitmap = null;
 
     private Button btnBuscarConductor;
+    private static final int REQUEST_SIGNATURE = 1002;
+    private Uri signatureUri;
+    private Button btnFirma;
     private ImageButton btnCerrarSesion;
     private boolean firmaEstaCargada = false;
     private ProgressDialog loadingDialog;
@@ -484,6 +486,10 @@ public class MainActivity extends AppCompatActivity {
 
     // Modificación del método initializeViews para incluir todas las vistas necesarias
     private void initializeViews() {
+        btnFirma = findViewById(R.id.btnFirma);
+        if (btnFirma != null) {
+            btnFirma.setOnClickListener(v -> abrirPantallaFirma());
+        }
         btnCerrarSesion = findViewById(R.id.btnCerrarSesion);
         btnCerrarSesion.setOnClickListener(v -> mostrarDialogoCerrarSesion());
         switchRetencionLicencia = findViewById(R.id.switchRetencionLicencia);
@@ -567,7 +573,10 @@ public class MainActivity extends AppCompatActivity {
         tvNumero = findViewById(R.id.tvNumero);
         tvEspecificaciones = findViewById(R.id.tvEspecificaciones);
     }
-
+    private void abrirPantallaFirma() {
+        Intent intent = new Intent(this, SignatureActivity.class);
+        startActivityForResult(intent, REQUEST_SIGNATURE);
+    }
     private void setupValorMedidoFormat() {
         if (etValorCinemometro != null) {
             etValorCinemometro.addTextChangedListener(new TextWatcher() {
@@ -1405,7 +1414,6 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.READ_EXTERNAL_STORAGE
     };
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -1421,13 +1429,13 @@ public class MainActivity extends AppCompatActivity {
                     if (imagenFile.exists()) {
                         Log.d("CameraDebug", "Archivo de imagen existe");
                         procesarImagen(imagenFile);
-                        return; // Salimos después de procesar la imagen del archivo
+                        return; // Salir después de procesar la imagen del archivo
                     } else {
                         Log.e("CameraDebug", "El archivo de imagen no existe en la ruta especificada");
                     }
                 }
 
-                // Si llegamos aquí, intentamos obtener la miniatura del Intent
+                // Intentar obtener la miniatura del Intent
                 if (data != null && data.getExtras() != null && data.getExtras().containsKey("data")) {
                     Log.d("CameraDebug", "Intentando obtener miniatura del Intent");
                     Bitmap imageBitmap = (Bitmap) data.getExtras().get("data");
@@ -1490,12 +1498,47 @@ public class MainActivity extends AppCompatActivity {
                     Log.e("CameraDebug", "No se pudo obtener la imagen seleccionada");
                     mostrarError("No se pudo obtener la imagen seleccionada");
                 }
+            } else if (requestCode == REQUEST_SIGNATURE) {
+                // Aquí se captura la firma del infractor
+                if (data != null) {
+                    String uriString = data.getStringExtra("signature_uri");
+                    if (uriString != null) {
+                        signatureUri = Uri.parse(uriString);
+                        try {
+                            // Convertir la firma a Bitmap y guardarla en infractorSignatureBitmap
+                            infractorSignatureBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), signatureUri);
+                            Log.d("SignatureDebug", "Firma del infractor capturada exitosamente");
+                            mostrarMensaje("Firma guardada exitosamente");
+
+                            // Si ya tenemos un ID de acta, subir la firma
+                            if (actaIdActual != null && !actaIdActual.isEmpty()) {
+                                subirFirmaInfractor(actaIdActual);
+                            } else {
+                                Log.d("SignatureDebug", "No hay ID de acta actual, la firma se subirá después de crear el acta");
+                            }
+                        } catch (IOException e) {
+                            Log.e("SignatureDebug", "Error al convertir la firma a Bitmap", e);
+                            mostrarError("Error al procesar la firma");
+                        }
+                    } else {
+                        Log.e("SignatureDebug", "No se recibió la URI de la firma");
+                        mostrarError("Error al guardar la firma");
+                    }
+                } else {
+                    Log.e("SignatureDebug", "No se recibieron datos de la firma");
+                    mostrarError("Error al procesar la firma");
+                }
             }
         } else {
             Log.d("CameraDebug", "Resultado no OK o requestCode no reconocido");
-            mostrarError("No se pudo capturar o seleccionar la imagen");
+            if (requestCode == REQUEST_SIGNATURE) {
+                Log.d("SignatureDebug", "Firma cancelada por el usuario");
+            } else {
+                mostrarError("No se pudo capturar o seleccionar la imagen");
+            }
         }
     }
+
     private void procesarImagen(File imagenFile) {
         try {
             Bitmap bitmap = BitmapFactory.decodeFile(imagenFile.getAbsolutePath());
@@ -1519,6 +1562,92 @@ public class MainActivity extends AppCompatActivity {
             Log.e("CameraDebug", "Error al procesar la imagen", e);
             mostrarError("Error al procesar la imagen: " + e.getMessage());
         }
+    }
+    private void subirFirmaInfractor(String actaId) {
+        Log.d("Firma", "=== INICIO subirFirmaInfractor ===");
+        Log.d("Firma", "ActaID: " + actaId);
+
+        if (infractorSignatureBitmap == null) {
+            Log.e("Firma", "Error: No hay firma del infractor para subir (bitmap nulo)");
+            mostrarError("Error: No hay firma del infractor para subir");
+            return;
+        }
+
+        Log.d("Firma", "Dimensiones de la firma: " + infractorSignatureBitmap.getWidth() + "x" + infractorSignatureBitmap.getHeight());
+
+        // Optimizar la imagen para reducir tamaño
+        Bitmap compressedBitmap = infractorSignatureBitmap;
+        if (infractorSignatureBitmap.getWidth() > 1000 || infractorSignatureBitmap.getHeight() > 1000) {
+            // Redimensionar a tamaño más manejable si es muy grande
+            float scale = Math.min(1000f / infractorSignatureBitmap.getWidth(), 1000f / infractorSignatureBitmap.getHeight());
+            int newWidth = Math.round(infractorSignatureBitmap.getWidth() * scale);
+            int newHeight = Math.round(infractorSignatureBitmap.getHeight() * scale);
+            compressedBitmap = Bitmap.createScaledBitmap(infractorSignatureBitmap, newWidth, newHeight, true);
+            Log.d("Firma", "Imagen redimensionada a: " + newWidth + "x" + newHeight);
+        }
+
+        // Convertir a Base64 con menor calidad para reducir tamaño
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        compressedBitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos);
+        byte[] imageBytes = baos.toByteArray();
+        String firmaBase64 = Base64.encodeToString(imageBytes, Base64.DEFAULT);
+
+        Log.d("Firma", "Tamaño de la imagen: " + imageBytes.length + " bytes");
+        Log.d("Firma", "Tamaño Base64: " + firmaBase64.length() + " caracteres");
+
+        // Mostrar diálogo de carga
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("Subiendo firma del infractor...");
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+
+        Log.d("Firma", "Ejecutando llamada a API");
+        Call<RespuestaSubirFirma> call = apiService.subirFirmaInfractor("subirFirmaInfractor", actaId, firmaBase64);
+        call.enqueue(new Callback<RespuestaSubirFirma>() {
+            @Override
+            public void onResponse(Call<RespuestaSubirFirma> call, Response<RespuestaSubirFirma> response) {
+                Log.d("Firma", "Respuesta recibida. Código: " + response.code());
+
+                if (progressDialog.isShowing()) {
+                    progressDialog.dismiss();
+                }
+
+                if (response.isSuccessful() && response.body() != null) {
+                    RespuestaSubirFirma respuesta = response.body();
+                    if (respuesta.isSuccess()) {
+                        String firmaUrl = respuesta.getFirmaUrl();
+                        String firmaId = respuesta.getFirmaId();
+                        Log.d("Firma", "Firma del infractor subida exitosamente. URL: " + firmaUrl + ", ID: " + firmaId);
+                        mostrarMensaje("Firma del infractor subida exitosamente");
+                    } else {
+                        Log.e("Firma", "Error al subir firma del infractor: " + respuesta.getError());
+                        mostrarError("Error al subir firma del infractor: " + respuesta.getError());
+                    }
+                } else {
+                    Log.e("Firma", "Error en la respuesta del servidor: " + response.code());
+                    try {
+                        String errorBody = response.errorBody() != null ? response.errorBody().string() : "Error desconocido";
+                        Log.e("Firma", "Error body: " + errorBody);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    mostrarError("Error en la respuesta del servidor al subir la firma");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<RespuestaSubirFirma> call, Throwable t) {
+                Log.e("Firma", "Error de conexión al subir firma del infractor", t);
+
+                if (progressDialog.isShowing()) {
+                    progressDialog.dismiss();
+                }
+
+                mostrarError("Error de conexión al subir firma del infractor: " + t.getMessage());
+            }
+        });
+
+        Log.d("Firma", "=== FIN subirFirmaInfractor ===");
     }
 
     private void procesarBitmap(Bitmap bitmap) {
@@ -2026,7 +2155,16 @@ public class MainActivity extends AppCompatActivity {
         imprimirCampoEnLinea("\n", "", lineWidth);
         imprimirCampoEnLinea("\n", "", lineWidth);
 
-
+        if (signatureUri != null) {
+            try {
+                Bitmap signatureBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), signatureUri);
+                byte[] command = Utils.decodeBitmap(signatureBitmap);
+                outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
+                printText(command);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
     private void imprimirTicketRetencion() throws IOException {
         int lineWidth = 32; // Caracteres por línea para 57mm
@@ -3045,7 +3183,6 @@ public class MainActivity extends AppCompatActivity {
             mostrarError("Error inesperado: " + e.getMessage());
         }
     }
-
     private void finalizarProcesoEImprimir(boolean exito) {
         runOnUiThread(() -> {
             if (loadingOverlay != null) {
@@ -3054,6 +3191,19 @@ public class MainActivity extends AppCompatActivity {
             }
             if (exito) {
                 mostrarMensaje("Datos guardados exitosamente");
+
+                // Si tenemos un ID de acta y una firma del infractor, la subimos
+                if (actaIdActual != null && !actaIdActual.isEmpty() && infractorSignatureBitmap != null) {
+                    // Subir la firma del infractor
+                    Log.d("Firma", "Subiendo firma del infractor para acta: " + actaIdActual);
+                    subirFirmaInfractor(actaIdActual);
+                } else {
+                    if (infractorSignatureBitmap == null) {
+                        Log.d("Firma", "No hay firma del infractor para subir");
+                    } else {
+                        Log.d("Firma", "No hay ID de acta para la firma");
+                    }
+                }
 
                 // Verificar si la firma está cargada antes de imprimir
                 if (!firmaEstaCargada) {

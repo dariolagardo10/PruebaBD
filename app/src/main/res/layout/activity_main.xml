@@ -809,8 +809,11 @@
             android:layout_marginBottom="16dp"
             style="@style/CustomButton" />
 
-
-
+        <Button
+            android:id="@+id/btnFirma"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Firmar" />
         <Button
             android:id="@+id/btnAddMorePhotos"
             android:layout_width="match_parent"
