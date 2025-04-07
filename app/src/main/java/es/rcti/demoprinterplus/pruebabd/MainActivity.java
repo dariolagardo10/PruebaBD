@@ -60,6 +60,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.RadioGroup;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -118,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Declaración de vistas
     private Bitmap infractorSignatureBitmap = null;
-
+    private RadioGroup radioGroupTipoActa;
     private Button btnBuscarConductor;
     private static final int REQUEST_SIGNATURE = 1002;
     private Uri signatureUri;
@@ -494,8 +495,9 @@ public class MainActivity extends AppCompatActivity {
         btnCerrarSesion.setOnClickListener(v -> mostrarDialogoCerrarSesion());
         switchRetencionLicencia = findViewById(R.id.switchRetencionLicencia);
         // Progress y Loading
-        switchFuga = findViewById(R.id.switchFuga);
+      //  switchFuga = findViewById(R.id.switchFuga);
 
+        radioGroupTipoActa = findViewById(R.id.radioGroupTipoActa);
         spinnerClaseLicencia = findViewById(R.id.spinnerClaseLicencia);
         progressBar = findViewById(R.id.progressBar);
         loadingOverlay = findViewById(R.id.loadingOverlay);
@@ -1894,24 +1896,36 @@ public class MainActivity extends AppCompatActivity {
 
     private void imprimirMulta() {
 
+
         int lineWidth = 32; // Caracteres por línea para 57mm
         try {
-
-
             outputStream = bluetoothSocket.getOutputStream();
             Log.d("ImpresionMulta", "OutputStream obtenido");
+
+            // Obtener el tipo de acta seleccionado
+            String tipoActa = null;
+            if (radioGroupTipoActa != null) {
+                int radioButtonId = radioGroupTipoActa.getCheckedRadioButtonId();
+                if (radioButtonId == R.id.radioMulta) {
+                    tipoActa = "Infraccion";
+                } else if (radioButtonId == R.id.radioAviso) {
+                    tipoActa = "Notificacion";
+                }
+            }
+
+// Validar que se haya seleccionado un tipo de acta
+            if (tipoActa == null) {
+                mostrarError("Por favor, seleccione un tipo de acta (Multa o Aviso)");
+                return;
+            }
 
             // Inicializar la impresora
             outputStream.write(new byte[]{0x1B, 0x40}); // Reset
             outputStream.write(new byte[]{0x1B, 0x4D, 0x01}); // Fuente pequeña
+            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
             Log.d("ImpresionMulta", "Impresora inicializada");
 
-            // Imprimir encabezado del ticket de retención
-            outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
-
-
-
-            // Obtener la fecha y hora actual
+            // Fecha y hora
             Calendar calendar = Calendar.getInstance();
             int dia = calendar.get(Calendar.DAY_OF_MONTH);
             int mes = calendar.get(Calendar.MONTH) + 1;
@@ -1919,115 +1933,93 @@ public class MainActivity extends AppCompatActivity {
             int hora = calendar.get(Calendar.HOUR_OF_DAY);
             int minuto = calendar.get(Calendar.MINUTE);
 
-            // Imprimir la imagen y encabezado
-            Log.d("ImpresionMulta", "Imprimiendo imagen");
+            // Logo y encabezado
             printPhoto(R.drawable.logos8);
-
-            Log.d("ImpresionMulta", "Imprimiendo encabezado");
             imprimirCampoEnLinea("SERIE A - 2025", "", lineWidth);
             imprimirCampoEnLinea("", "", lineWidth);
-
-            // Imprimir información básica
-            Log.d("ImpresionMulta", "Imprimiendo numero de Acta y fecha");
             printNewLine();
+
+            // Acta y fecha/hora
             imprimirCampoEnLinea("Numero de Acta: ", obtenerActaIdActual(), lineWidth);
+            imprimirCampoEnLinea("Tipo de Acta: ", tipoActa, lineWidth);
             imprimirCampoEnLinea("Fecha: ", String.format("%02d/%02d/%04d", dia, mes, anio), lineWidth);
             imprimirCampoEnLinea("Hora: ", String.format("%02d:%02d", hora, minuto), lineWidth);
             printNewLine();
 
-            // Sección conductor - Solo imprimir si hay datos relevantes
+            // Datos del conductor (si hay)
             boolean tieneDatosConductor = !TextUtils.isEmpty(etApellidoNombre.getText()) ||
                     !TextUtils.isEmpty(etNumeroDocumento.getText());
-
             if (tieneDatosConductor) {
-                Log.d("ImpresionMulta", "Imprimiendo sección conductor");
                 printNewLine();
                 imprimirCampoEnLinea("CONDUCTOR", "", lineWidth);
                 printNewLine();
 
-                if (!TextUtils.isEmpty(etApellidoNombre.getText())) {
+                if (!TextUtils.isEmpty(etApellidoNombre.getText()))
                     imprimirCampoEnLinea("Apellido y Nombre: ", etApellidoNombre.getText().toString(), lineWidth);
-                }
                 if (!TextUtils.isEmpty(etNumeroDocumento.getText())) {
                     imprimirCampoEnLinea("Tipo Documento: ", spinnerTipoDocumento.getSelectedItem().toString(), lineWidth);
                     imprimirCampoEnLinea("Numero Documento: ", etNumeroDocumento.getText().toString(), lineWidth);
                 }
-                if (!TextUtils.isEmpty(etDomicilio.getText())) {
+                if (!TextUtils.isEmpty(etDomicilio.getText()))
                     imprimirCampoEnLinea("Domicilio: ", etDomicilio.getText().toString(), lineWidth);
-                }
-                if (!TextUtils.isEmpty(actvLocalidad.getText())) {
+                if (!TextUtils.isEmpty(actvLocalidad.getText()))
                     imprimirCampoEnLinea("Localidad: ", actvLocalidad.getText().toString(), lineWidth);
-                }
-                if (!TextUtils.isEmpty(etCodPostal.getText())) {
+                if (!TextUtils.isEmpty(etCodPostal.getText()))
                     imprimirCampoEnLinea("Codigo Postal: ", etCodPostal.getText().toString(), lineWidth);
-                }
-                if (!TextUtils.isEmpty(actvDepartamento.getText())) {
+                if (!TextUtils.isEmpty(actvDepartamento.getText()))
                     imprimirCampoEnLinea("Departamento: ", actvDepartamento.getText().toString(), lineWidth);
-                }
-                if (!TextUtils.isEmpty(etProvincia.getText())) {
+                if (!TextUtils.isEmpty(etProvincia.getText()))
                     imprimirCampoEnLinea("Provincia: ", etProvincia.getText().toString(), lineWidth);
-                }
-                if (!TextUtils.isEmpty(etPais.getText())) {
+                if (!TextUtils.isEmpty(etPais.getText()))
                     imprimirCampoEnLinea("Pais: ", etPais.getText().toString(), lineWidth);
-                }
                 if (!TextUtils.isEmpty(etLicencia.getText())) {
                     imprimirCampoEnLinea("Licencia: ", etLicencia.getText().toString(), lineWidth);
-                    if (!TextUtils.isEmpty(spinnerExpedidaPor.getText())) {
+                    if (!TextUtils.isEmpty(spinnerExpedidaPor.getText()))
                         imprimirCampoEnLinea("Expedida por: ", spinnerExpedidaPor.getText().toString(), lineWidth);
-                    }
                     String claseLicencia = spinnerClaseLicencia.getSelectedItemPosition() > 0 ?
-                            spinnerClaseLicencia.getSelectedItem().toString() :
-                            "No especificada";
+                            spinnerClaseLicencia.getSelectedItem().toString() : "No especificada";
                     imprimirCampoEnLinea("Clase Licencia: ", claseLicencia, lineWidth);
-                    if (!TextUtils.isEmpty(etVencimiento.getText())) {
+                    if (!TextUtils.isEmpty(etVencimiento.getText()))
                         imprimirCampoEnLinea("Vencimiento: ", etVencimiento.getText().toString(), lineWidth);
-                    }
                 }
                 printNewLine();
             }
-            // Imprimir sección vehículo (siempre obligatoria)
-            Log.d("ImpresionMulta", "Imprimiendo seccion vehiculo");
+
+            // Datos del vehículo
             printNewLine();
             imprimirCampoEnLinea("VEHICULO", "", lineWidth);
             printNewLine();
             imprimirCampoEnLinea("Dominio: ", etDominio.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Propietario: ", etPropietario.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Marca: ", spinnerMarca.getSelectedItem().toString(), lineWidth);
-            if (spinnerMarca.getSelectedItem().toString().equals("Otra")) {
+            if (spinnerMarca.getSelectedItem().toString().equals("Otra"))
                 imprimirCampoEnLinea("Otra Marca: ", etOtraMarca.getText().toString(), lineWidth);
-            }
             imprimirCampoEnLinea("Modelo: ", etModeloVehiculo.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Tipo Vehiculo: ", spinnerTipoVehiculo.getSelectedItem().toString(), lineWidth);
             printNewLine();
 
-            // Imprimir sección hecho (siempre obligatoria)
-            Log.d("ImpresionMulta", "Imprimiendo sección hecho");
+            // Hecho
             printNewLine();
             imprimirCampoEnLinea("HECHO", "", lineWidth);
             printNewLine();
             imprimirCampoEnLinea("Infracciones:", "", lineWidth);
-            for (String infraccion : infraccionesSeleccionadas) {
+            for (String infraccion : infraccionesSeleccionadas)
                 imprimirCampoEnLinea("- ", infraccion, lineWidth);
-            }
             imprimirCampoEnLinea("Lugar: ", etLugar.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Departamento : ", etDepartamentoMulta.getText().toString(), lineWidth);
             imprimirCampoEnLinea("Municipio : ", etMunicipioMulta.getText().toString(), lineWidth);
-            if (!TextUtils.isEmpty(etMultaInfo.getText())) {
+            if (!TextUtils.isEmpty(etMultaInfo.getText()))
                 imprimirCampoEnLinea("Observacion: ", etMultaInfo.getText().toString(), lineWidth);
-            }
             printNewLine();
 
-            // Sección especificaciones - Solo imprimir si hay datos
+            // Especificaciones si hay
             String tipoEquipo = spinnerTipoEquipo.getSelectedItem().toString();
             boolean tieneEspecificaciones = !tipoEquipo.equals("Seleccione un tipo") &&
                     !TextUtils.isEmpty(etEquipo.getText());
-
             if (tieneEspecificaciones) {
-                Log.d("ImpresionMulta", "Imprimiendo sección especificaciones");
                 printNewLine();
                 imprimirCampoEnLinea("ESPECIFICACIONES", "", lineWidth);
                 printNewLine();
-
                 imprimirCampoEnLinea("Tipo Equipo: ", tipoEquipo, lineWidth);
 
                 if (tipoEquipo.equals("Etilometro")) {
@@ -2038,34 +2030,25 @@ public class MainActivity extends AppCompatActivity {
                     imprimirCampoEnLinea("Equipo: ", etEquipo.getText().toString(), lineWidth);
                 }
 
-                if (!TextUtils.isEmpty(etMarcaCinemometro.getText())) {
+                if (!TextUtils.isEmpty(etMarcaCinemometro.getText()))
                     imprimirCampoEnLinea("Marca: ", etMarcaCinemometro.getText().toString(), lineWidth);
-                }
-                if (!TextUtils.isEmpty(etModeloCinemometro.getText())) {
+                if (!TextUtils.isEmpty(etModeloCinemometro.getText()))
                     imprimirCampoEnLinea("Modelo: ", etModeloCinemometro.getText().toString(), lineWidth);
-                }
-                if (!TextUtils.isEmpty(etSerieCinemometro.getText())) {
+                if (!TextUtils.isEmpty(etSerieCinemometro.getText()))
                     imprimirCampoEnLinea("Serie: ", etSerieCinemometro.getText().toString(), lineWidth);
-                }
-                if (!TextUtils.isEmpty(etCodAprobacionCinemometro.getText())) {
+                if (!TextUtils.isEmpty(etCodAprobacionCinemometro.getText()))
                     imprimirCampoEnLinea("Codigo Aprobacion: ", etCodAprobacionCinemometro.getText().toString(), lineWidth);
-                }
                 if (!TextUtils.isEmpty(etValorCinemometro.getText())) {
                     String valor = etValorCinemometro.getText().toString();
-                    if (tipoEquipo.equals("Decibelimetro")) {
-                        valor += " dB";
-                    }
+                    if (tipoEquipo.equals("Decibelimetro")) valor += " dB";
                     imprimirCampoEnLinea("Valor: ", valor, lineWidth);
                 }
                 printNewLine();
             }
 
-            // Imprimir datos del inspector y firma (siempre obligatorio)
+            // Inspector
             String urlFirma = obtenerUrlFirma(legajoInspector);
-            Log.d("Firma", "URL de la firma: " + urlFirma);
             verificarExistenciaFirma(urlFirma);
-
-            Log.d("ImpresionMulta", "Imprimiendo sección datos del inspector");
             printNewLine();
             imprimirCampoEnLinea("DATOS DEL INSPECTOR", "", lineWidth);
             printNewLine();
@@ -2073,99 +2056,61 @@ public class MainActivity extends AppCompatActivity {
             imprimirCampoEnLinea("Legajo: ", legajoInspector, lineWidth);
             printNewLine();
 
-
+            // Fuga o negativa
             String dni2 = etNumeroDocumento.getText().toString().trim();
-            // Modificar el método imprimirMulta() para incluir la verificación de fuga
-            if (switchFuga.isChecked()) {
-                // Caso de fuga
-                String dominio = etDominio.getText().toString().trim();
+            String dominio = etDominio.getText().toString().trim();
+            if (dni2.isEmpty() || dni2.equals("00000000")) {
                 if (!dominio.isEmpty()) {
                     imprimirCampoEnLinea("CONSTE: El conductor del vehiculo dominio " + dominio +
-                            " no presento la documentacion requerida al momento de ser solicitado por el inspector. " +
-                            "", "", lineWidth);
+                            " se niega a identificarse y/o presentar documentacion.", "", lineWidth);
                 } else {
-                    // No permitir continuar si no hay dominio
                     mostrarError("No se puede labrar el acta sin el dominio del vehículo");
                     return;
                 }
-            } else if (dni2.isEmpty() || dni2.equals("00000000")) {
-                // Caso donde se niega a identificarse
-                String dominio = etDominio.getText().toString().trim();
-                if (!dominio.isEmpty()) {
-                    imprimirCampoEnLinea("CONSTE: El conductor del vehiculo dominio " + dominio +
-                            " se niega a identificarse y/o presentar documentacion. " +
-                            "", "", lineWidth);
-                } else {
-                    mostrarError("No se puede labrar el acta sin el dominio del vehiculo");
-                    return;
-                }
-            }
-            Log.d("ImpresionMulta", "Iniciando impresión de multa");
-            if (bluetoothSocket == null || !bluetoothSocket.isConnected()) {
-                mostrarMensaje("No hay conexión con la impresora");
-                return;
             }
 
-            // Imprimir firma
+            // Firma del inspector
             outputStream.write(PrinterCommands.FEED_LINE);
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
             imprimirCampoEnLinea("FIRMA DEL INSPECTOR", "", lineWidth);
             outputStream.write(PrinterCommands.FEED_LINE);
-
-            Log.d("Firma", "¿OutputStream es null? " + (outputStream == null));
             imprimirFirma(urlFirma, lineWidth);
 
+            // Declaración final y QR
             outputStream.write(PrinterCommands.ESC_ALIGN_LEFT);
             outputStream.write(PrinterCommands.FEED_LINE);
-
-            // Añadir después de la firma del inspector
             outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
             imprimirCampoEnLinea("DECLARACION", "", lineWidth);
             outputStream.write(PrinterCommands.FEED_LINE);
-
-            outputStream.write(PrinterCommands.FEED_LINE);
-
-            // Imprimir texto final
             imprimirCampoEnLinea("LA PRESENTE SERA ELEVADA PARA SU INTERVENCION A LA AUTORIDAD DE JUZGAMIENTO DEL TRIBUNAL MUNICIPAL DE FALTAS, CON DOMICILIO EN: SAN MARTIN 1555 POSADAS, DONDE PODRA OFRECER DESCARGO Y EJERCER SU DERECHO DE DEFENSA EN LOS TERMINOS DE LOS ARTS.69,70 Y 71 DE LA LEY 24.449.", "", lineWidth);
+            imprimirCampoEnLinea("Consulta y abona tu infraccion escaneando el siguiente QR a partir de 24 horas de labrada.", "", lineWidth);
+            printPhoto(R.drawable.qr);
+            imprimirCampoEnLinea("\n", "", lineWidth);
+
+            // Retención de licencia
+            if (switchRetencionLicencia.isChecked()) {
+                outputStream.write(PrinterCommands.FEED_LINE);
+                outputStream.write(PrinterCommands.FEED_LINE);
+                imprimirTicketRetencion();
+            }
 
             // Finalizar impresión
             outputStream.write(new byte[]{0x0A, 0x0A, 0x0A, 0x0A});
             outputStream.write(new byte[]{0x1D, 0x56, 0x01}); // Corte parcial
-
-            Log.d("ImpresionMulta", "Finalizando impresion");
             outputStream.flush();
+            outputStream.close();
+            bluetoothSocket.close();
+
             mostrarMensaje("Multa impresa con éxito");
-
-            if (switchRetencionLicencia.isChecked()) {
-                // Agregar espacio entre tickets
-                outputStream.write(PrinterCommands.FEED_LINE);
-                outputStream.write(PrinterCommands.FEED_LINE);
-
-                // Imprimir el ticket de retención
-                imprimirTicketRetencion();
-            }
+            limpiarCampos(); // ✔️ Aquí se limpian los campos solo si todo salió bien
 
         } catch (IOException e) {
             Log.e("ImpresionMulta", "Error al imprimir: " + e.getMessage(), e);
             mostrarMensaje("Error al imprimir: " + e.getMessage());
         }
-
-        imprimirCampoEnLinea("Consulta y abona tu infraccion escaneando el siguiente QR a partir de 24 horas de labrada.", "", lineWidth);
-        printPhoto(R.drawable.qr);
-        imprimirCampoEnLinea("\n", "", lineWidth);
-        imprimirCampoEnLinea("\n", "", lineWidth);
-
-        if (signatureUri != null) {
-            try {
-                Bitmap signatureBitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), signatureUri);
-                byte[] command = Utils.decodeBitmap(signatureBitmap);
-                outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
-                printText(command);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
+
+
     private void imprimirTicketRetencion() throws IOException {
         int lineWidth = 32; // Caracteres por línea para 57mm
 
@@ -2183,13 +2128,16 @@ public class MainActivity extends AppCompatActivity {
         imprimirCampoEnLinea("APELLIDO Y NOMBRE: ", etApellidoNombre.getText().toString(), lineWidth);
         imprimirCampoEnLinea("DOMICILIO: ", etDomicilio.getText().toString(), lineWidth);
         imprimirCampoEnLinea("LICENCIA DE CONDUCIR: ", etLicencia.getText().toString(), lineWidth);
-
+        String claseLicencia = spinnerClaseLicencia.getSelectedItemPosition() > 0 ?
+                spinnerClaseLicencia.getSelectedItem().toString() : "No especificada";
+        imprimirCampoEnLinea("CLASE DE LICENCIA: ", claseLicencia, lineWidth);
         // Fecha y hora
         String fecha = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date());
         String hora = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
         imprimirCampoEnLinea("FECHA: ", fecha, lineWidth);
         imprimirCampoEnLinea("HORA: ", hora, lineWidth);
 
+        
         // Texto legal
         outputStream.write(PrinterCommands.ESC_ALIGN_CENTER);
         imprimirCampoEnLinea("SE PROCEDE A LA RETENCION DE LA LICENCIA DE CONDUCIR DEBIENDO PRESENTARSE DENTRO DE LAS 72HS EN EL TRIBUNAL MUNICIPAL DE FALTAS.", "", lineWidth);
@@ -2969,6 +2917,27 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void insertarDatosConductor() {
+
+        // Obtener el tipo de acta seleccionado
+        String tipoActa = null; // Inicialmente no seleccionado
+        if (radioGroupTipoActa != null) {
+            int radioButtonId = radioGroupTipoActa.getCheckedRadioButtonId();
+            if (radioButtonId == R.id.radioMulta) {
+                tipoActa = "Multa";
+            } else if (radioButtonId == R.id.radioAviso) {
+                tipoActa = "Aviso";
+            }
+        }
+
+// Validar que se haya seleccionado un tipo de acta
+        if (tipoActa == null) {
+            mostrarError("Por favor, seleccione un tipo de acta (Multa o Aviso)");
+            showLoading(false);
+            btnInsertarConductor.setEnabled(true);
+            return;
+        }
+
+
         if (infraccionesSeleccionadas.isEmpty()) {
             mostrarError("Debe seleccionar al menos una infracción");
             return;
@@ -3076,14 +3045,14 @@ public class MainActivity extends AppCompatActivity {
                     "insertarConductor",
                     numero, fecha, hora, dominio, lugar,
                     infraccionesJson.toString(),
-                    infractorDni, // Ahora siempre tiene un valor por defecto
-                    infractorNombre, // Ahora siempre tiene un valor por defecto
-                    infractorDomicilio, // Ahora siempre tiene un valor por defecto
-                    infractorLocalidad, // Ahora siempre tiene un valor por defecto
-                    infractorCp, // Ahora siempre tiene un valor por defecto
-                    infractorProvincia, // Ahora siempre tiene un valor por defecto
-                    infractorPais, // Ahora siempre tiene un valor por defecto
-                    infractorLicencia, // Ahora siempre tiene un valor por defecto
+                    infractorDni,
+                    infractorNombre,
+                    infractorDomicilio,
+                    infractorLocalidad,
+                    infractorCp,
+                    infractorProvincia,
+                    infractorPais,
+                    infractorLicencia,
                     tipoVehiculo,
                     inspectorId,
                     marcaVehiculo,
@@ -3091,7 +3060,8 @@ public class MainActivity extends AppCompatActivity {
                     modeloVehiculo,
                     departamento,
                     municipio,
-                    observaciones
+                    observaciones,
+                    tipoActa  // Agregar el nuevo parámetro
             );
 
             call.enqueue(new Callback<RespuestaInsertarConductor>() {
@@ -3682,7 +3652,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void limpiarCampos() {
-        switchFuga.setChecked(false);
+// Resetear el tipo de acta (ninguna selección)
+        if (radioGroupTipoActa != null) {
+            radioGroupTipoActa.clearCheck();
+        }
+        infractorSignatureBitmap = null;
+        signatureUri = null;
+
+
+       // switchFuga.setChecked(false);
         switchRetencionLicencia.setChecked(false);
         if (etCodPostal != null) {
             etCodPostal.setEnabled(true);

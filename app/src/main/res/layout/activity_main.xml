@@ -93,10 +93,49 @@
                 android:gravity="center"
                 android:layout_marginBottom="16dp"/>
 
-
-
         </LinearLayout>
+        <!-- Después del TextView tvNumero -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp"
+            android:padding="16dp"
+            android:background="@drawable/section_background">
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tipo de Acta"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#006B3F"
+                android:layout_marginBottom="8dp"/>
+
+            <RadioGroup
+                android:id="@+id/radioGroupTipoActa"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/radioMulta"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Infraccion"
+                    android:textSize="16sp"/>
+
+                <RadioButton
+                    android:id="@+id/radioAviso"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Notificacion"
+                    android:textSize="16sp"/>
+            </RadioGroup>
+        </LinearLayout>
         <!-- Sección Conductor -->
         <TextView
             android:id="@+id/tvConductor"
@@ -382,7 +421,10 @@
                     android:text="Buscar"/>
             </LinearLayout>
 
-            <!-- Agregar después del layout del conductor -->
+
+
+
+            <!--
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -402,7 +444,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"/>
             </LinearLayout>
-
+            -->
             <EditText
                 android:id="@+id/etPropietario"
                 android:layout_width="match_parent"
@@ -798,6 +840,18 @@
             android:visibility="gone"
             android:layout_marginBottom="16dp"/>
 
+
+        <Button
+            android:id="@+id/btnFirma"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Firma del Infractor"
+            android:textColor="@color/white"
+            android:background="@drawable/button_background"
+            android:minHeight="56dp"
+            android:layout_marginBottom="16dp"
+            style="@style/CustomButton" />
+
         <Button
             android:id="@+id/btnInsertarConductor"
             android:layout_width="match_parent"
@@ -809,11 +863,8 @@
             android:layout_marginBottom="16dp"
             style="@style/CustomButton" />
 
-        <Button
-            android:id="@+id/btnFirma"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Firmar" />
+
+
         <Button
             android:id="@+id/btnAddMorePhotos"
             android:layout_width="match_parent"

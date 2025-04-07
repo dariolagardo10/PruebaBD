@@ -73,13 +73,14 @@ public interface OracleApiService {
             @Field("infractor_pais") String infractorPais,
             @Field("infractor_licencia") String infractorLicencia,
             @Field("tipo_vehiculo") String tipoVehiculo,
-            @Field("inspector_id") String inspectorId,         // Cambiado de tf_inspector_id a inspector_id
+            @Field("inspector_id") String inspectorId,
             @Field("marca_vehiculo") String marcaVehiculo,
             @Field("propietario") String propietario,
             @Field("modelo_vehiculo") String modeloVehiculo,
             @Field("departamento") String departamento,
             @Field("municipio") String municipio,
-            @Field("observaciones") String observaciones
+            @Field("observaciones") String observaciones,
+            @Field("tipo_acta") String tipoActa  // Nuevo parámetro
     );
     @FormUrlEncoded
     @POST("Conductor_Api.php")
